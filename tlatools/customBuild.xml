@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="TLA+ Tools" default="default" xmlns:jacoco="antlib:org.jacoco.ant">
+
+	<!-- load property file -->
+	<loadproperties srcfile="project.properties" />
+
+	<!-- linking with system properties -->
+	<property environment="env" />
+
+	<!-- setup classpath -->
+	<path id="project.classpath">
+
+	</path>
+
+	<!-- timestamp -->
+	<tstamp>
+		<format property="TODAY" pattern="yyyy-MM-dd" locale="en,US" />
+	</tstamp>
+
+	<!-- JaCoCo code coverage -->
+	<taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml">
+		<classpath path="lib/jacocoant.jar"/>
+	</taskdef>
+
+	<taskdef resource="org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties">
+		<classpath>
+			<pathelement location="lib/aspectjtools-1.8.5.jar" />
+		</classpath>
+	</taskdef>
+
+	<condition property="test.skip">
+		<istrue value="${maven.test.skip}"/>
+	</condition>
+
+	<target name="info" description="Prints information">
+		<echo message="ANT_HOME     : ${env.ANT_HOME}" />
+		<echo message="Ant Version  : ${ant.version}" />
+		<echo message="Java Version : ${ant.java.version}" />
+		<echo message="Skipping Tests : ${test.skip}" />
+		<echo message="With AspectJ: ${withaj}" />
+	</target>
+
+	<target name="default" depends="info" description="Default">
+		<antcall target="compile" inheritall="true" inheritrefs="true" />
+		<antcall target="compile-aj" inheritall="true" inheritrefs="true" />
+		<antcall target="compile-test" inheritall="true" inheritrefs="true" />
+		<antcall target="test" inheritall="true" inheritrefs="true" />
+		<antcall target="dist" inheritall="true" inheritrefs="true" />
+		<antcall target="test-dist" inheritall="true" inheritrefs="true" />
+	</target>
+
+	<target name="default-release" depends="info" description="Produces a release">
+		<antcall target="compile" inheritall="true" inheritrefs="true" />
+		<antcall target="dist-mixed-zip" inheritall="true" inheritrefs="true" />
+	</target>
+
+	<!-- Compiles and runs the short-running tests. -->
+	<target name="shorttests" depends="info" description="Run tests">
+		<antcall target="default" inheritall="true" inheritrefs="true" />
+		<antcall target="test-verify" inheritall="true" inheritrefs="true" />
+	</target>
+
+	<!-- Compiles and runs *only* the long-running tests. Not the ones. -->
+	<target name="longtests" depends="info" description="Run long-running tests">
+		<antcall target="compile" inheritall="true" inheritrefs="true" />
+		<antcall target="compile-aj" inheritall="true" inheritrefs="true">
+			<!-- long tests require AspjectJ -->
+	        <param name="withaj" value="true"/>
+	    </antcall>
+		<antcall target="compile-test" inheritall="true" inheritrefs="true" />
+		<antcall target="dist" inheritall="true" inheritrefs="true" />
+		<antcall target="test-dist-long" inheritall="true" inheritrefs="true" />
+	</target>
+	
+	<!-- ===========================================================-->
+	<!-- Don't call any of the targets below, use the umbrella      -->
+	<!-- targets above which correctly call a target's dependencies -->
+	<!-- ===========================================================-->
+
+	<!-- Cleans the compilation output directory -->
+	<target name="clean" unless="noclean">
+		<delete includeemptydirs="true" failonerror="false">
+			<fileset dir="${class.dir}" includes="*/**" />
+			<fileset dir="${test.class.dir}" includes="*/**" />
+		</delete>
+	</target>
+
+	<!-- Compiles the TLA+ tools code -->
+	<target name="compile" depends="clean">
+		<echo>
+			================================================================
+			= The following warnings about sun.misc.Unsafe can be ignored. = 
+			= OffHeapDiskFPSet has been written using Unsafe to best use   =
+			= a computer's memory. If Unsafe is removed from the JVM,      =
+			= OffHeapDiskFPSet won't work anymore.                         =
+			================================================================
+		</echo>
+		<!-- compile -->
+		<mkdir dir="${class.dir}" />
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${class.dir}" debug="true" verbose="false" source="1.5" target="1.5">
+			<!-- compilerarg value="-Xlint:deprecation"/-->
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/javax.mail.jar" />
+			</classpath>
+		</javac>
+
+		<!-- copy the resource files -->
+		<copy todir="${class.dir}">
+			<fileset dir="${src.dir}">
+				<include name="**/*.*" />
+				<exclude name="**/*.java" />
+				<exclude name="**/*.~*" />
+				<exclude name="**/*##*" />
+			</fileset>
+		</copy>
+	</target>
+
+	<!-- Compiles AspectJ auxiliary code -->
+	<target name="compile-aj" if="withaj">
+		<echo>
+			====================================================================
+			= The following warnings (Xlint:adviceDidNotMatch) can be ignored. =
+			= We are doing load time weaving that kicks in when TLC gets       = 
+			= started, not when it is compiled.                                =
+			====================================================================
+		</echo>
+		<!-- compile aspectj related class files -->
+		<iajc destdir="${class.dir}" sourceRoots="${src-aj.dir}" debug="true" source="1.5" target="1.5">
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/aspectjrt-1.8.5.jar" />
+				<pathelement location="lib/aspectjtools-1.8.5.jar" />
+				<pathelement path="${class.dir}" />
+			</classpath>
+		</iajc>
+		<!-- copy the resource files -->
+		<copy todir="${class.dir}">
+			<fileset dir="${src-aj.dir}">
+				<include name="**/*.*" />
+				<exclude name="**/*.aj" />
+				<exclude name="**/*.java" />
+				<exclude name="**/*.~*" />
+				<exclude name="**/*##*" />
+			</fileset>
+		</copy>
+		<!-- These files are requried for load time weaving and during runtime -->
+		<copy todir="${class.dir}/lib">
+			<fileset dir="lib/">
+				<include name="aspectjrt-1.8.5.jar" />
+				<include name="aspectjweaver-1.8.5.jar" />
+			</fileset>
+		</copy>
+	</target>
+
+	<!-- Creates a distribution out of compiled code -->
+	<target name="dist">
+		<!-- Extract javax.mail jar into class directory to be packaged into tla2tools.jar -->
+		<!-- javax.mail is used by the MailSender functionality, that mails the output -->
+		<!-- of TLC to a given email address. -->
+		<!-- The javax.mail dependency as well as javax.activation is also depended upon -->
+		<!-- by the tla2tools OSGi bundle and is expected to be the same version. -->
+		<unzip src="lib/javax.mail.jar" dest="${class.dir}"/>
+
+		<!-- Extract javax.mail to maven classes folder. This script is triggered by -->
+		<!-- maven. However, maven compiles the code again to target/classes from -->
+		<!-- where it creates the plugin -->
+		<unzip src="lib/javax.mail.jar" dest="target/classes"/>
+
+		<!-- TODO: add javax.activation to lib/ and extract it here too. Otherwise we have a -->
+		<!-- runtime dependency on Java 6. -->
+
+		<!-- create a JAR file for the users -->
+		<mkdir dir="${dist.dir}" />
+		<jar destfile="${dist.file}">
+			<fileset dir="${class.dir}" includes="**/*" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+				<attribute name="Build-Tag" value="${env.BUILD_TAG}" />
+				<attribute name="Build-Rev" value="${Build-Rev}" />
+				<attribute name="Implementation-Title" value="TLA+ Tools" />
+				<attribute name="Implementation-Version" value="${version} ${TODAY}" />
+				<attribute name="Implementation-Vendor" value="Microsoft Corp." />
+				<!-- App-Name and Permissions is required by Java Webstart used by distributed TLC -->
+				<!-- Depending on security level, the user will see a warning otherwise. -->
+				<!-- http://docs.oracle.com/javase/7/docs/technotes/guides/jweb/security/manifest.html -->
+				<attribute name="Application-Name" value="TLC" />
+				<attribute name="permissions" value="all-permissions" />
+				<!-- won't work with 'sandbox' as it writes files -->
+			</manifest>
+		</jar>
+	</target>
+
+	<!-- Compiles the TLA+ tools *test* code -->
+	<target name="compile-test" unless="test.skip">
+		<!-- compile unit tests -->
+		<mkdir dir="${test.class.dir}" />
+		<javac includeantruntime="false" srcdir="${test.dir}" destdir="${test.class.dir}" debug="true" verbose="false">
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/junit-4.8.2.jar" />
+				<pathelement location="lib/easymock-3.3.1.jar" />
+				<pathelement path="${class.dir}" />
+			</classpath>
+		</javac>
+		<!-- Include auxilliary files when compiling classes. -->
+		<copy todir="${test.class.dir}">
+		   <fileset dir="${test.dir}" includes="**/*.dot"/>
+		</copy>		
+		<!-- copy class.dir to path with whitespace -->
+		<!-- this is required by some tests to make sense -->
+		<!-- even throw a non digit in -->
+		<property name="ws.class.dir" value="TLA+ Tools" />
+		<copy todir="${ws.class.dir}">
+			<fileset dir="${class.dir}" />
+		</copy>
+	</target>
+
+	<!-- Executes accompining unit tests -->
+	<target name="test" unless="test.skip">
+		<!-- run junit tests -->
+		<mkdir dir="${test.reports}" />
+		<jacoco:coverage destfile="target/code-coverage.exec">
+			<junit printsummary="yes" haltonfailure="no" haltonerror="no"  forkmode="perTest" fork="yes">
+				<!-- enable all assertions -->
+				<jvmarg value="-ea"/>
+				<!-- Uncomment to open a debug port in each forked VM to remote attach your Eclipse at port 1044.
+	            <jvmarg value="-Xdebug" />
+		        <jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=1044" />
+				-->
+				<classpath refid="project.classpath" />
+				<classpath>
+					<pathelement location="lib/junit-4.8.2.jar" />
+					<pathelement location="lib/cglib-nodep-3.1.jar" />
+					<pathelement location="lib/objenesis-2.1.jar" />
+					<pathelement location="lib/easymock-3.3.1.jar" />
+					<pathelement location="lib/javax.mail.jar" />
+					<pathelement path="${class.dir}" />
+					<pathelement path="${test.class.dir}" />
+				</classpath>
+				<formatter type="xml" />
+
+				<!-- Pass the base path of the tlatools project to unit tests in case they need it to locate TLA+ specs or configs -->
+				<sysproperty key="basedir" value="${basedir}/"/>
+				<batchtest fork="yes" todir="${test.reports}">
+					<fileset dir="${test.dir}">
+						<include name="**/*Test*.java" />
+						<exclude name="**/CommonTestCase.java" />
+						<exclude name="**/ModelCheckerTestCase.java" />
+						<exclude name="**/DistributedTLCTestCase.java" />
+						<exclude name="**/TLCServerTestCase.java" />
+						<exclude name="**/SuccessfulSimulationTestCase.java" />
+						<exclude name="**/AbstractExampleTestCase.java" />
+						<exclude name="**/TestMPRecorder.java" />
+						<exclude name="**/Abstract*Test.java" />
+						<exclude name="**/TestDriver.java" />
+						<exclude name="**/TestDriver2.java" />
+						<exclude name="**/AllTests.java" />
+					</fileset>
+				</batchtest>
+			</junit>
+		</jacoco:coverage>
+
+		<!-- remove copied class.dir -->
+		<delete dir="${ws.class.dir}" deleteonexit="true"/>
+	</target>
+
+	<!-- Executes accompining unit tests on jar file -->
+	<target name="test-dist" unless="test.skip">
+		<!-- run junit tests on tlatools.jar -->
+		<mkdir dir="${test.reports}/onJar" />
+		<junit printsummary="yes" haltonfailure="no" haltonerror="no" forkmode="perTest" fork="yes">
+			<!-- enable all assertions -->
+			<jvmarg value="-ea"/>
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/junit-4.8.2.jar" />
+				<pathelement location="lib/cglib-nodep-3.1.jar" />
+				<pathelement location="lib/objenesis-2.1.jar" />
+				<pathelement location="lib/easymock-3.3.1.jar" />
+				<pathelement location="${dist.file}" />
+				<pathelement path="${test.class.dir}" />
+			</classpath>
+
+			<formatter type="xml" />
+			<sysproperty key="basedir" value="${basedir}/"/>
+
+			<batchtest fork="yes" todir="${test.reports}/onJar">
+				<fileset dir="${test.dir}">
+					<include name="**/*Test*.java" />
+					<exclude name="**/CommonTestCase.java" />
+					<exclude name="**/ModelCheckerTestCase.java" />
+					<exclude name="**/DistributedTLCTestCase.java" />
+					<exclude name="**/TLCServerTestCase.java" />
+					<exclude name="**/SuccessfulSimulationTestCase.java" />
+					<exclude name="**/AbstractExampleTestCase.java" />
+					<exclude name="**/TestMPRecorder.java" />
+					<exclude name="**/Abstract*Test.java" />
+					<exclude name="**/TestDriver.java" />
+					<exclude name="**/TestDriver2.java" />
+					<exclude name="**/AllTests.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+
+		<!-- remove copied class.dir -->
+		<delete dir="${ws.class.dir}" deleteonexit="true"/>
+	</target>
+
+	<!-- Executes accompining long-running unit tests on jar file -->
+	<target name="test-dist-long" unless="test.skip">
+		<!-- compile unit tests -->
+		<mkdir dir="${test.class.dir}" />
+		<javac includeantruntime="false" srcdir="${test.dir}-long" destdir="${test.class.dir}" debug="true" verbose="false">
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/junit-4.8.2.jar" />
+				<pathelement path="${class.dir}" />
+			</classpath>
+		</javac>
+		<!-- copy class.dir to path with whitespace -->
+		<!-- this is required by some tests to make sense -->
+		<!-- even throw a "+" and whitespace into the mix -->
+		<property name="ws.class.dir" value="TLA+ Tools" />
+		<copy todir="${ws.class.dir}">
+			<fileset dir="${class.dir}" />
+		</copy>
+		<!-- run junit tests on tlatools.jar -->
+		<mkdir dir="${test.reports}/onJarLong" />
+		<junit printsummary="yes" haltonfailure="no" haltonerror="no" maxmemory="4096m" forkmode="perTest" fork="yes">
+			<!-- enable all assertions -->
+			<jvmarg value="-ea"/>
+			<jvmarg value="-javaagent:lib/aspectjweaver-1.8.5.jar" />
+			<sysproperty key="org.aspectj.weaver.showWeaveInfo" value="false"/>
+			<sysproperty key="aj.weaving.verbose" value="false"/>
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/junit-4.8.2.jar" />
+				<pathelement location="${dist.file}" />
+				<pathelement path="${test.class.dir}" />
+				<!-- Need class.dir on path to find AspectJ related classes which don't get packaged into dist -->
+				<pathelement path="${class.dir}" />
+			</classpath>
+
+			<formatter type="xml" />
+
+			<batchtest fork="yes" todir="${test.reports}/onJarLong">
+				<fileset dir="${test.dir}-long">
+					<exclude name="**/MultiThreadedSpecTest.java"/>
+
+					<!-- The following tests take way too long (hours). -->
+					<!-- Reactivate when you start working on the fingerprint sets! -->
+					<exclude name="**/DiskFPSetTest.java"/>
+					<exclude name="**/FPSetTest.java"/>
+					<exclude name="**/MSBDiskFPSetTest.java"/>
+					<exclude name="**/OffHeapDiskFPSetTest.java"/>
+					<exclude name="**/DiskStateQueueTest.java"/>
+
+					<include name="**/*Test*.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+
+		<!-- remove copied class.dir -->
+		<delete dir="${ws.class.dir}" deleteonexit="true"/>
+	</target>
+
+	<!-- Verifies TLC parts with NASA's pathfinder model checker -->
+	<target name="test-verify">
+		<!-- Compile our boilerplate code needed to verify TLC. E.g. the StateQueueVerify creates -->
+		<!-- examplary produces & consumers and a dummy implementation of StateQueue. -->
+		<javac includeantruntime="false" srcdir="${test.dir}-verify" destdir="${test.class.dir}" debug="true" verbose="false">
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement path="${class.dir}" />
+				<pathelement location="lib/jpf.jar" />
+			</classpath>
+		</javac>
+
+		<mkdir dir="${test.reports}/verify" />
+		<junit printsummary="yes" haltonfailure="no" haltonerror="no" maxmemory="4096m" forkmode="perTest" fork="yes" 
+			dir="${basedir}/test-verify" >
+			<classpath refid="project.classpath" />
+			<classpath>
+				<pathelement location="lib/junit-4.8.2.jar" />
+				<pathelement location="lib/jpf.jar" />
+				<pathelement location="lib/jpf-classes.jar" />
+				<pathelement path="${class.dir}" />
+				<pathelement path="${test.class.dir}" />
+			</classpath>
+
+			<formatter type="xml" />
+
+			<batchtest fork="yes" todir="${test.reports}/verify">
+				<fileset dir="${test.dir}-verify">
+					<include name="**/*Test*.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<!-- Build a distribution -->
+	<target name="dist-mixed-jar" depends="default">
+		<!-- create a JAR file for the users -->
+		<jar destfile="${dist-mixed.file.jar}">
+			<fileset dir="${class.dir}" includes="**/*" />
+			<zipfileset dir="${src.dir}" includes="**/*.java" />
+			<zipfileset dir="${doc.dir}">
+				<include name="README"/>
+				<include name="License.txt"/>
+			</zipfileset>
+			<zipfileset dir="${examples.dir}" includes="**/*" prefix="examples">
+				<include name="**/*"/>
+				<exclude name=".project"/>
+			</zipfileset>
+
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+				<attribute name="Build-Tag" value="${env.BUILD_TAG}" />
+				<attribute name="Build-Rev" value="${Build-Rev}" />
+				<attribute name="Implementation-Title" value="TLA+ Tools" />
+				<attribute name="Implementation-Version" value="${version} ${TODAY}" />
+				<attribute name="Implementation-Vendor" value="Microsoft Corp." />
+			</manifest>
+		</jar>
+	</target>
+
+
+	<!-- Build a distribution -->
+	<target name="dist-mixed-zip" depends="default">
+		<!-- create a zip file for the users and developers-->
+		<zip destfile="${dist-mixed.file}">
+			<zipfileset dir="${src.dir}" includes="**/*.java" prefix="tla" />
+			<zipfileset dir="${class.dir}" includes="**/*" prefix="tla" />
+			<zipfileset dir="${doc.dir}" prefix="tla">
+				<include name="README"/>
+				<include name="License.txt"/>
+			</zipfileset>
+			<zipfileset dir="${examples.dir}" includes="**/*" prefix="tla/examples">
+				<include name="**/*"/>
+				<exclude name=".project"/>
+			</zipfileset>
+
+		</zip>
+	</target>
+</project>
