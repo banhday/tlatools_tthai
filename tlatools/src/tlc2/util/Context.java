@@ -119,4 +119,13 @@ public final class Context {
 		sb.append("]");
 		return sb.toString();
 	}
+	
+	// TTHai
+	public final SymbolNode getName() {
+		return this.name;
+	}
+	public final Context getNext() {
+		return this.next;
+	}
+	// TTHai
 }

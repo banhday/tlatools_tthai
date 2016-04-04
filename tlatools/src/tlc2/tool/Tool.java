@@ -76,7 +76,9 @@ public class Tool
     implements ValueConstants, ToolGlobals, TraceApp 
 {
   protected Action[] actions;     // the list of TLA actions.
-  private CallStack callStack;    // the call stack.
+  // private CallStack callstack;
+  public CallStack callStack;     // the call stack.
+  								  // changed to public by TTHai
 
   private Vect actionVec = new Vect(10);
   
