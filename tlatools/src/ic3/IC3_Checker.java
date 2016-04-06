@@ -3,9 +3,12 @@ package ic3;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+
+import util.Assert;
 import z3parser.Z3Constants;
 import z3parser.Z3Encoder;
 import z3parser.Z3Node;
+
 import com.microsoft.z3.*;
 
 public class IC3_Checker implements Z3Constants {
@@ -1125,39 +1128,30 @@ public class IC3_Checker implements Z3Constants {
 	}		
 	
 	private void constructFrame0() {
-		BoolExpr init_states = null,
-				state = null;
-		int alen = this.predNames.length / 2, i , index;
-		Model model;
-		Expr tmp;		
-		BoolExpr[] res = new BoolExpr[alen];	
-//		System.out.println(this.init_solver.toString());
-		this.init_solver.push();
-		while (this.init_solver.check() == Status.SATISFIABLE) {			
-			model = this.init_solver.getModel();
-			state = this.getCurrentState(model);
-//			for (i = 0; i < alen; i++) {
-//				index = this.predIndexes[i];
-//				tmp = model.getConstInterp(this.t_decls[index]);
-//				if (tmp.equals(this.ctx.mkTrue())) {
-//					res[i] = this.preds[i];					
-//				}
-//				else if (tmp.equals(this.ctx.mkFalse())) {
-//					res[i] = this.negPreds[i];				
-//				}
+//		BoolExpr init_states = null,
+//				state = null;
+//		int alen = this.predNames.length / 2, i , index;
+//		Model model;
+//		Expr tmp;		
+//		BoolExpr[] res = new BoolExpr[alen];	
+////		System.out.println(this.init_solver.toString());
+//		this.init_solver.push();
+//		while (this.init_solver.check() == Status.SATISFIABLE) {			
+//			model = this.init_solver.getModel();
+//			state = this.getCurrentState(model);
+//			if (init_states == null) {
+//				init_states = state; 
 //			}
-//			state = this.ctx.mkAnd(res);
-			if (init_states == null) {
-				init_states = state; 
-			}
-			else {
-				init_states = this.ctx.mkOr(new BoolExpr[] { init_states, state });
-			}
-			this.init_solver.add(this.ctx.mkNot(state));			
-		}
-		this.init_solver.pop();
+//			else {
+//				init_states = this.ctx.mkOr(new BoolExpr[] { init_states, state });
+//			}
+//			this.init_solver.add(this.ctx.mkNot(state));			
+//		}
+//		this.init_solver.pop();
 		IC3_Frame frame0 = new IC3_Frame();
-		frame0.formula = init_states;
+//		frame0.formula = init_states;
+		BoolExpr[] assertions = this.init_solver.getAssertions();
+		frame0.formula = this.ctx.mkAnd(assertions);
 		this.frames.add(frame0);
 	}
 	
@@ -1176,7 +1170,7 @@ public class IC3_Checker implements Z3Constants {
 				res[i] = this.negPreds[i];				
 			}
 		}
-		state = this.ctx.mkAnd(res);
+		state = this.ctx.mkAnd(res);		
 		return state;
 	}
 	
@@ -1375,63 +1369,33 @@ public class IC3_Checker implements Z3Constants {
 	}
 		
 	private int findI(IC3_StateK q) {
-		int alen = this.frames.size() - 1;
 //		System.out.println(this.next_solver.toString());
 		this.next_solver.push();
 		this.next_solver.add(q.p_formula);
-		this.next_solver.add(this.ctx.mkNot(q.formula));
-		boolean stop = false;
-		int i = 0, left = 0, right = this.frames.size() - 2, middle, res = -1;
-//		while (i < alen && !stop) {
-//			this.next_solver.push();
-//			this.next_solver.add(this.frames.get(i).formula);
-//			//			System.out.println(this.next_solver.toString());
-//			if (this.next_solver.check() == Status.UNSATISFIABLE) {
-//				i++;				
-//			}
-//			else if (this.next_solver.check() == Status.SATISFIABLE) {
-//				stop = true;
-//			}
-//			else if (this.next_solver.check() == Status.UNKNOWN) {
-//				i = -1;
-//				stop = true;				
-//			}
-//
-//			//			System.out.println(this.next_solver.toString());
-//			this.next_solver.pop();
-//
-//		}
-		while (left <= right) {
-			middle = (left + right) / 2;
+		this.next_solver.add(this.ctx.mkNot(q.formula));	
+		int left = q.k - 2, right = this.frames.size() - 1, res = -1;
+		if (left < 1) {
+			left = 1;
+		}
+		for (int mid = left; mid <= right; mid++) {
 			this.next_solver.push();
-			this.next_solver.add(this.frames.get(middle).formula);
-//			System.out.println(this.next_solver.toString());
-			if (this.next_solver.check() == Status.UNSATISFIABLE) {
-				res = middle;
-				left = middle + 1;
-				this.next_solver.pop();
-			}
-			else if (this.next_solver.check() == Status.SATISFIABLE) {				
-				right = middle - 1;
-				this.next_solver.pop();
-			}
-			else if (this.next_solver.check() == Status.UNKNOWN) {
-				this.next_solver.pop();
-				res = -1;
+			this.next_solver.add(this.frames.get(mid).formula);
+			if (this.next_solver.check() == Status.SATISFIABLE) {
+				res = mid;
 				break;
 			}
+			if (this.next_solver.check() == Status.UNKNOWN) {
+				Assert.fail(Z3Err, "Z3 cannot solve Fi /\\ T /\\ ~q /\\ q");
+			}
+			this.next_solver.pop();
 		}
 		this.next_solver.pop();
-//		if (i	<= alen) {
-//			return i - 1; 
-//		}		
 		return res;
-//		return -1;
 	}
 	
 	private void addC(IC3_Clause clause, IC3_Clause p_clause, int alen) {
 		IC3_Frame frame;		
-		for (int i = 0; i < alen; i++) {
+		for (int i = 1; i < alen; i++) {
 			frame = this.frames.get(i);
 			frame.formula = this.ctx.mkAnd(frame.formula, clause.formula);
 			frame.clauses.add(clause);
@@ -1455,7 +1419,7 @@ public class IC3_Checker implements Z3Constants {
 	private boolean removeCTI(BoolExpr s, BoolExpr p_s, FileWriter file) throws IOException {
 		IC3_StateK state0 = new IC3_StateK(s, p_s, this.k_ic3), curStateK, newState;
 		ArrayList<IC3_StateK> states = new ArrayList<IC3_StateK>();
-		int i, j;
+		int i;
 		states.add(state0);
 		BoolExpr c, p_c, t, p_t;
 		Model w;
@@ -1467,7 +1431,6 @@ public class IC3_Checker implements Z3Constants {
 				return false;
 			}
 //			System.out.println(this.next_solver.toString());
-
 			i = this.findI(curStateK);
 			c = this.ctx.mkNot(curStateK.formula);
 			p_c = this.ctx.mkNot(curStateK.p_formula);

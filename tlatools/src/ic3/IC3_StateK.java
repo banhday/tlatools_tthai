@@ -4,10 +4,10 @@ import java.util.*;
 import com.microsoft.z3.*;
 
 public class IC3_StateK {
-	BoolExpr formula;
-	BoolExpr p_formula; 
-	int k;
-	IC3_StateK next;
+	public BoolExpr formula;
+	public BoolExpr p_formula; 
+	public int k;
+	public IC3_StateK next;
 	
 	public IC3_StateK() {
 		this.formula = null;
