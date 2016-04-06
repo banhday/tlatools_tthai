@@ -1,0 +1,16 @@
+git clone https://github.com/Z3Prover/z3.git/ // this version includes java api
+
+32-bit builds, start with:
+	python scripts/mk_make.py
+or instead, for a 64-bit build:
+	python scripts/mk_make.py -x
+then:
+	cd build
+	nmake
+	
+for java api, start with	
+	python scripts/mk_make.py --java
+	python scripts/mk_make.py --java -x
+then 	
+	cd build
+	nmake

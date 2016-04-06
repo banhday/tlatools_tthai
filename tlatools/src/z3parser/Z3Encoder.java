@@ -534,7 +534,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 						//
 						// switch (node.name) {
 						// case "<": {
-						else if (node.name.equals("<")) {
+						if (node.name.equals("<")) {
 							this.checker.IntsBool_check(node);
 							node.opCode = OPCODE_lt;							
 						}
@@ -1369,7 +1369,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 							node.name = "<=";
 							node.opCode = OPCODE_le;
 						}
-						else if (node.name.equals("<")) {
+						if (node.name.equals("<")) {
 							this.checker.IntsBool_check(node);
 							node.opCode = OPCODE_lt;							
 						}
@@ -1977,7 +1977,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 							node.name = "<=";
 							node.opCode = OPCODE_le;
 						}
-						else if (node.name.equals("<")) {
+						if (node.name.equals("<")) {
 							this.checker.IntsBool_check(node);
 							node.opCode = OPCODE_lt;							
 						}
@@ -3198,6 +3198,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	
 	private final void printZ3Spec() throws IOException {
 		this.dir = "D:\\EMCL\\TUW\\Thesis\\Z3API\\z3-master\\build\\test_ToyExample\\";
+		this.dir = "D:\\TLAToolbox-1.5.2-win32.win32.x86_64\\MyExamples\\bcastFolklore_lazyValues_100.toolbox\\parse\\";
 		this.printRawZ3SpecToFile();
 		this.printRawZ3SpecToStdout();
 		this.printRefinedZ3SpecToFile();
