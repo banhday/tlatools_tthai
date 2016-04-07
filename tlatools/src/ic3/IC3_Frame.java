@@ -4,6 +4,9 @@ import java.util.*;
 import com.microsoft.z3.*;
 
 public class IC3_Frame {
+	// Formula is always P.
+	// A clause is always c which is an inductive generalization. 
+	// A p_clause is a primed clause.
 	public BoolExpr formula;
 	public ArrayList<IC3_Clause> clauses;
 	public ArrayList<IC3_Clause> p_clauses;

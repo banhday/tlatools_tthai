@@ -3876,6 +3876,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 	}
 	
+	// for NuSMV
 	private final void createNextPreds() {
 		int alen = this.preds.size();
 		for (int i = 0; i < alen; i++) {
