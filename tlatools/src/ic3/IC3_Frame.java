@@ -9,12 +9,12 @@ public class IC3_Frame {
 	// A p_clause is a primed clause.
 	public BoolExpr formula;
 	public ArrayList<IC3_Clause> clauses;
-	public ArrayList<IC3_Clause> p_clauses;
+	public ArrayList<IC3_Clause> shifted_clauses;
 	
 	public IC3_Frame() {
 		this.formula = null;
 		this.clauses = new ArrayList<IC3_Clause>();
-		this.p_clauses = new ArrayList<IC3_Clause>();
+		this.shifted_clauses = new ArrayList<IC3_Clause>();
 	}
 	
 	public boolean hasClause(IC3_Clause c) {

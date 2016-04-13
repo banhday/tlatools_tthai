@@ -17,27 +17,28 @@ public class IC3_Checker implements Z3Constants {
 	private ArrayList<Z3FuncSymbol> fcns;
 	private ArrayList<Z3VarSymbol> vars;
 	//	private ArrayList<Z3VarSymbol> bvars;
-	private Context init_ctx;
-	private Context next_ctx;
+//	private Context init_ctx;
+//	private Context next_ctx;
 	private Context ctx;
-	//	private int de_Bruijn_index;
 	private String[] predNames;
-	private String[] negPredNames;
+//	private String[] negPredNames;
 	private BoolExpr[] preds;
 	private BoolExpr[] negPreds;
 	private Solver init_solver;
 	private Solver next_solver;
 	private Solver solver;
 
+	// They are required by Java API to parse SMT-Lib2 strings.
 	private Symbol[] t_sortNames;
 	private Sort[] t_sorts;
 	private Symbol[] t_declNames;
 	private FuncDecl[] t_decls;
+	
 	private int[] predIndexes;
 
-//	private String nusmvFileName;
-	private int[] sat;
-	private int no;
+	//	private String nusmvFileName;
+//	private int[] sat;
+//	private int no;
 	private BoolExpr cur_inv;
 	private BoolExpr next_inv;
 
@@ -70,7 +71,8 @@ public class IC3_Checker implements Z3Constants {
 		}		
 		return null;
 	}
-
+ 
+	// From Z3Node to Z3SortSymbol in Java API
 	private void createSortList() {
 		ArrayList<Z3Node> sorts = this.z3Encoder.getSortList();
 		int alen = sorts.size();
@@ -80,21 +82,26 @@ public class IC3_Checker implements Z3Constants {
 		}
 	}
 
+	// From Z3Node to Z3VarSymbol in Java API
 	private void createVarList() {
+		// Variables in a given TLA+ specification
 		Z3Node[] vars = this.z3Encoder.getVarList();
 		for (int i = 0; i < vars.length; i++) {
 			this.vars.add(this.createZ3VarSymbol(vars[i]));
 		}
+		// Variables are created during the translation.
 		ArrayList<Z3Node> freshVars = this.z3Encoder.getFreshVarList();
 		for (int i = 0; i < freshVars.size(); i++) {
 			this.vars.add(this.createZ3VarSymbol(freshVars.get(i)));
 		}
+		// Strings are created during the translation.
 		ArrayList<Z3Node> stringVars = this.z3Encoder.getStringList();
 		for (int i = 0; i < stringVars.size(); i++) {
 			this.vars.add(this.createZ3VarSymbol(stringVars.get(i)));
 		}
 	}
 
+	// From Z3Nodes to Z3FuncSymbol in Java API
 	private void createFcnList() {
 		ArrayList<Z3Node> sorts = this.z3Encoder.getSortList();
 		int alen = sorts.size();
@@ -125,6 +132,7 @@ public class IC3_Checker implements Z3Constants {
 		}
 	}
 
+	// Z3VarSymbol with a name, an uninterpreted function in Z3 and a symbol in Java API of Z3
 	private Z3VarSymbol createZ3VarSymbol(Z3Node var) {
 		String name = var.name;
 		Symbol symbol = this.ctx.mkSymbol(name);
@@ -133,6 +141,7 @@ public class IC3_Checker implements Z3Constants {
 		return new Z3VarSymbol(name, expr, symbol);
 	}
 
+	// Z3SortSymbol with a name, an uninterpreted sort in Z3 and a symbol in Java API of Z3
 	private Z3SortSymbol createZ3SortSymbol(Z3Node sort) {
 		String name = sort.name;		
 		if (name.equals(Int)) {			
@@ -199,6 +208,7 @@ public class IC3_Checker implements Z3Constants {
 		return new Z3FuncSymbol(name, func, symbol);		
 	}
 
+	// From list to array. Just for efficiency.
 	private void constructPredNames() {
 		this.predNames = new String[ this.z3Encoder.getPredNames().size() ];
 		this.z3Encoder.getPredNames().toArray(this.predNames);		
@@ -209,7 +219,7 @@ public class IC3_Checker implements Z3Constants {
 		// For each query, our solve spends at most 10 hours finding a solution and an unsat core.
 		cfg.put("model", "true");    
 		cfg.put("timeout", "36000000");
-		//    cfg.put("proof", "true");
+		cfg.put("proof", "true");
 		cfg.put("unsat_core", "true");
 		this.ctx = new Context(cfg);
 
@@ -225,14 +235,15 @@ public class IC3_Checker implements Z3Constants {
 		this.next_solver = this.ctx.mkSolver();
 		this.next_solver.add(next);
 
+		// solver is a general one.
 		this.solver = this.ctx.mkSolver();
-		
+
 		// Constructs type symbols, fuction symbols and variables.
 		this.createSortList();
 		this.createVarList();
 		this.createFcnList();
 
-		// Construct new data types, except Bool and Int.
+		// Save new data types, except Bool and Int.
 		this.t_sortNames = new Symbol[ this.sorts.size() - 2];
 		for (int i = 0, j = 2; i < this.t_sortNames.length; i++, j++) {			
 			t_sortNames[i] = this.sorts.get(j).getSort().getName();			
@@ -242,7 +253,7 @@ public class IC3_Checker implements Z3Constants {
 			t_sorts[i] = this.sorts.get(j).getSort();			
 		}
 
-		// Construct new function symbols, including variables.
+		// Save new function symbols, including variables.
 		this.t_declNames = new Symbol[ this.vars.size() + this.fcns.size() ];
 		this.t_decls = new FuncDecl[ this.vars.size() + this.fcns.size() ];
 		for (int i = 0; i < this.vars.size(); i++) {
@@ -259,8 +270,8 @@ public class IC3_Checker implements Z3Constants {
 		}				
 	}
 
-	// cur_inv is P and next_inv is P'.
-	// cur_inv should be renamed to cur_inv.
+	// cur_inv is P and shifted_inv is P'.
+	// next_inv should be renamed to shifted_inv. I will do it later.
 	private void createInvs() {
 		Z3Node node1 = new Z3Node("assert", OPCODE_assert, this.z3Encoder.boolSort, null, 
 				this.z3Encoder.raw_init_inv, tla_atom, NoSet),
@@ -274,9 +285,13 @@ public class IC3_Checker implements Z3Constants {
 	}
 
 	// Including pred, p_pred, not pred.
+	// First I tried to use NuSMV as a model checker. 
+	// Therefore, primed variables are named as next(pred), instead of p_pred. 
+	// Unnecessary stuffs still remain. 
+	// I will clean it later.
 	private void createBoolExpr_Preds() {
 		ArrayList<Z3Node> t_preds = this.z3Encoder.getPredicates();
-//		ArrayList<Z3Node> t_negPreds = this.z3Encoder.getNegPredicates();
+		//		ArrayList<Z3Node> t_negPreds = this.z3Encoder.getNegPredicates();
 		Z3Node pred, negPred, t;
 		String str, name;
 		int alen = t_preds.size();
@@ -299,7 +314,9 @@ public class IC3_Checker implements Z3Constants {
 					break;
 				}
 			}
-			// Construct pred and negPred for Java API
+			// Construct assert pred and assert negPred for Java API
+			// Just for convenience. We need to push and pop literals many times to a solver.
+			// I don't want to construct a negative literal many times from a positive literal and declare assertions.
 			t = new Z3Node(name, OPCODE_const, this.z3Encoder.boolSort, null, tla_atom, NoSet);
 			pred = new Z3Node("assert", OPCODE_assert, this.z3Encoder.boolSort, null, t, tla_atom, NoSet);
 			str = this.z3Encoder.z3Tool.printZ3Node(pred, "");			
@@ -310,13 +327,14 @@ public class IC3_Checker implements Z3Constants {
 			this.negPreds[i] = this.ctx.parseSMTLIB2String(str, this.t_sortNames, this.t_sorts, this.t_declNames, this.t_decls);
 		}				
 	}	
-	
+
 	public void run() throws IOException {
 		this.createContextSolver();
 		this.constructPredNames();
 		this.createBoolExpr_Preds();
-//		this.createNegPredNames();
+		//		this.createNegPredNames();
 		this.createInvs();
+		// Just want to know how long to check a model.
 		String timeFileName = this.z3Encoder.getDir() + "time_" + this.z3Encoder.getSpecFileName() + ".txt";		
 		FileWriter file = new FileWriter(timeFileName);
 		long start2 = System.nanoTime();
@@ -345,8 +363,8 @@ public class IC3_Checker implements Z3Constants {
 		frame0.formula = this.ctx.mkAnd(assertions);
 		this.frames.add(frame0);
 	}
-	
-	// Initially, every frame is P.
+
+	// Initially, every frame is P and has only one clause P.
 	private IC3_Frame constructPFrame() {
 		IC3_Frame frame = new IC3_Frame();
 		if (this.init_clause == null) {
@@ -357,7 +375,7 @@ public class IC3_Checker implements Z3Constants {
 		}
 		frame.formula = this.cur_inv;		
 		frame.clauses.add(this.init_clause);
-		frame.p_clauses.add(this.next_clause);
+		frame.shifted_clauses.add(this.next_clause);
 		return frame;
 	}
 
@@ -368,7 +386,7 @@ public class IC3_Checker implements Z3Constants {
 			this.frames.add(frame1);
 		}
 	}
-	
+
 	// Get values of current predicates.
 	private BoolExpr[] getCurPreds(Model model) {		
 		int alen = this.predNames.length / 2, i , index;		
@@ -382,6 +400,41 @@ public class IC3_Checker implements Z3Constants {
 			}
 			else if (tmp.equals(this.ctx.mkFalse())) {
 				res[i] = this.negPreds[i];				
+			}
+		}
+		return res;
+	}
+
+	// Get values of current predicates.
+	private BoolExpr[] shiftCurPreds(Model model) {		
+		int alen = this.predNames.length / 2, i , index;		
+		Expr tmp;		
+		BoolExpr[] res = new BoolExpr[alen];
+		for (i = 0; i < alen; i++) {
+			index = this.predIndexes[i];
+			tmp = model.getConstInterp(this.t_decls[index]);
+			if (tmp.equals(this.ctx.mkTrue())) {
+				res[i] = this.preds[i + alen];					
+			}
+			else if (tmp.equals(this.ctx.mkFalse())) {
+				res[i] = this.negPreds[i + alen];				
+			}
+		}
+		return res;
+	}
+
+	private BoolExpr[] unshiftPrimedPreds(Model model) {		
+		int left = this.predNames.length / 2, i , index;		
+		Expr tmp;		
+		BoolExpr[] res = new BoolExpr[left];
+		for (i = left; i < this.predNames.length; i++) {
+			index = this.predIndexes[i];
+			tmp = model.getConstInterp(this.t_decls[index]);
+			if (tmp.equals(this.ctx.mkTrue())) {
+				res[i - left] = this.preds[i - left];					
+			}
+			else if (tmp.equals(this.ctx.mkFalse())) {
+				res[i - left] = this.negPreds[i - left];				
 			}
 		}
 		return res;
@@ -432,25 +485,43 @@ public class IC3_Checker implements Z3Constants {
 		IC3_StateK q = statek;
 		while (q != null) {
 			str = this.ctx.mkAnd(q.preds).toString();
-			file.write(str + "\n");
+			file.write("Step " + Integer.toString(q.k) + ": " + str + "\n");
 			file.flush();
 			q = q.next;
 		}		
 	}	
 
+	//	private Expr[] getCurrentConcreteState(Model model) {
+	//		Expr[] vars;
+	//		for (i = 0; i < alen; i++) {
+	//			index = this.predIndexes[i];
+	//			tmp = model.getConstInterp(this.t_decls[index]);
+	//			if (tmp.equals(this.ctx.mkTrue())) {
+	//				res[i] = this.preds[i];					
+	//			}
+	//			else if (tmp.equals(this.ctx.mkFalse())) {
+	//				res[i] = this.negPreds[i];				
+	//			}
+	//		}
+	//		return vars;
+	//	}
+
 	// Check sat(I /\ not P)
-	private boolean ic3_checkInit(FileWriter file) throws IOException  {
-		this.next_solver.push();
+	private boolean ic3_checkInit(FileWriter file) throws IOException  {		
 		BoolExpr initStates = this.frames.get(0).formula;
 		this.solver.push();
 		this.solver.add(initStates);
 		this.solver.add(this.ctx.mkNot(this.cur_inv));
 		if (this.solver.check() == Status.SATISFIABLE) {
+			file.write("BAD PATH \n");
+			file.flush();
 			Model model = this.solver.getModel();
 			BoolExpr[] badPreds = this.getCurPreds(model);
 			String str = (this.ctx.mkAnd(badPreds)).toString();
-			file.write(str + "\n");
-			file.flush();
+			file.write("Step 0: " + str + "\n");
+			file.flush();			
+			//			file.write("Concrete state: " + str + "\n");
+			//			file.flush();
 			return false;
 		}
 		this.solver.pop();
@@ -465,21 +536,23 @@ public class IC3_Checker implements Z3Constants {
 		this.next_solver.add(initStates);
 		this.next_solver.add(this.ctx.mkNot(this.next_inv));
 		if (this.next_solver.check() == Status.SATISFIABLE) {
+			file.write("BAD PATH \n");
+			file.flush();
 			Model model = this.next_solver.getModel();
 			BoolExpr[] badPreds = this.getCurPreds(model);
 			String str0 = (this.ctx.mkAnd(badPreds)).toString();
-			file.write(str0);
+			file.write("Step 0: " +str0 + "\n");
 			file.flush();
 			badPreds = this.getPrimedPreds(model);
 			String str1 = (this.ctx.mkAnd(badPreds)).toString();
-			file.write(str1);
+			file.write("Step 1: " +str1 + "\n");
 			file.flush();
 			return false;
 		}
 		this.next_solver.pop();
 		return true;
 	}
-       
+
 	// Chech whether there exists two adjacent frames F_i and F_{i+1} s.t. F_i = F_{i+1}.
 	private boolean checkFrames(FileWriter file) throws IOException {
 		int alen = this.frames.size() - 1;
@@ -490,7 +563,8 @@ public class IC3_Checker implements Z3Constants {
 			if (this.solver.check() == Status.UNSATISFIABLE) {
 				file.write("STRENTHEN INVARIANT\n");			
 				file.flush();
-				file.write(this.frames.get(i).formula.toString());
+				Expr inv = this.frames.get(i).formula.simplify();
+				file.write(inv.toString());
 				file.flush();
 				return true;
 			}
@@ -501,22 +575,21 @@ public class IC3_Checker implements Z3Constants {
 
 	// Before checking unsat(F_i /\ T /\ ~c'), we check whether c \in F_{i+1}.
 	private void propagateClauses() {
-		for (int i = 1; i <= this.k_ic3; i++) {
+		for (int i = 1; i < this.k_ic3; i++) {
 			IC3_Frame frame = this.frames.get(i),
 					frame1 = this.frames.get(i + 1);
 			this.next_solver.push();
 			this.next_solver.add(frame.formula);
 			for (int j = 0; j < frame.clauses.size(); j++) {
 				IC3_Clause c = frame.clauses.get(j),  
-						p_c = frame.p_clauses.get(j);
+						shifted_c = frame.shifted_clauses.get(j);
 				if (!frame1.hasClause(c)) {
 					this.next_solver.push();
-					this.next_solver.add(this.ctx.mkNot(p_c.formula));
+					this.next_solver.add(this.ctx.mkNot(shifted_c.formula));
 					if (this.next_solver.check() == Status.UNSATISFIABLE) {						
 						frame1.formula = this.ctx.mkAnd(new BoolExpr[] { frame1.formula, c.formula });
 						frame1.clauses.add(c);
-						frame1.p_clauses.add(p_c);
-
+						frame1.shifted_clauses.add(shifted_c);
 					}
 					this.next_solver.pop();
 				}			
@@ -539,23 +612,23 @@ public class IC3_Checker implements Z3Constants {
 		}
 		return states.get(pos);
 	}
-	
+
 	// sat(F_0 /\ T /\ ~q /\ q')
-	private boolean hasBadStatesAtStep1(IC3_StateK statek, FileWriter file) throws IOException {
-		this.next_solver.push();
+	private boolean hasBadStatesAtStep1(IC3_StateK statek, FileWriter file) throws IOException {		
 		BoolExpr F0 = this.frames.get(0).formula,
 				notQ = this.ctx.mkNot(this.ctx.mkAnd(statek.preds)),
-				primedQ = this.ctx.mkAnd(statek.p_preds);				
+				shiftedQ = this.ctx.mkAnd(statek.shifted_preds);				
 		boolean res = false;
+		this.next_solver.push();
 		this.next_solver.add(F0);
 		this.next_solver.add(notQ);
-		this.next_solver.add(primedQ);
+		this.next_solver.add(shiftedQ);
 		if (this.next_solver.check() == Status.SATISFIABLE) {
 			Model model = this.next_solver.getModel();
 			BoolExpr[] badPreds = this.getCurPreds(model),
-					nextBadPreds = this.constructPrimedPreds(badPreds);
+					shiftedBadPreds = this.shiftCurPreds(model);
 			// badState is at the initial step.
-			IC3_StateK badState = new IC3_StateK(badPreds, nextBadPreds, statek.k - 1);
+			IC3_StateK badState = new IC3_StateK(badPreds, shiftedBadPreds, statek.k - 1);
 			badState.next = statek;
 			this.printBadPath(badState, file);
 			res = true;
@@ -569,7 +642,7 @@ public class IC3_Checker implements Z3Constants {
 	private int findI(IC3_StateK q) {
 		//		System.out.println(this.next_solver.toString());
 		this.next_solver.push();
-		this.next_solver.add(this.ctx.mkAnd(q.p_preds));
+		this.next_solver.add(this.ctx.mkAnd(q.shifted_preds));
 		this.next_solver.add(this.ctx.mkNot(this.ctx.mkAnd(q.preds)));	
 		int left = q.k - 2, right = this.frames.size() - 1, res = -1;
 		if (left < 1) {
@@ -578,27 +651,36 @@ public class IC3_Checker implements Z3Constants {
 		for (int mid = left; mid <= right; mid++) {
 			this.next_solver.push();
 			this.next_solver.add(this.frames.get(mid).formula);
-			if (this.next_solver.check() == Status.SATISFIABLE) {
+			Status status = this.next_solver.check();
+			if (status == Status.SATISFIABLE) {
 				res = mid;
 				break;
 			}
-			if (this.next_solver.check() == Status.UNKNOWN) {
+			if (status == Status.UNKNOWN) {
 				Assert.fail(Z3Err, "Z3 cannot solve Fi /\\ T /\\ ~q /\\ q");
 			}
 			this.next_solver.pop();
 		}
 		this.next_solver.pop();
-		return res;
+		// It is a risky assumption. If the query is unsat at all frames, we assume that it is sat at a "fresh" frame.
+		if (res == -1) {
+			res = right + 1;
+		}
+		return res - 1;
 	}
 
 	// F = F /\ c
-	private void addC(IC3_Clause clause, IC3_Clause p_clause, int alen) {
+	// Add an inductive strethening to a frame.
+	private void addC(IC3_Clause clause, IC3_Clause shifted_clause, int alen) {
 		IC3_Frame frame;		
+		if (alen > this.frames.size()) {
+			alen = this.frames.size();
+		}
 		for (int i = 1; i < alen; i++) {
 			frame = this.frames.get(i);
 			frame.formula = this.ctx.mkAnd(frame.formula, clause.formula);
 			frame.clauses.add(clause);
-			frame.p_clauses.add(p_clause);
+			frame.shifted_clauses.add(shifted_clause);
 		}
 	}
 
@@ -608,120 +690,143 @@ public class IC3_Checker implements Z3Constants {
 		this.next_solver.push();
 		this.next_solver.add(frame.formula);
 		this.next_solver.add(this.ctx.mkNot(this.ctx.mkAnd(q.preds)));
-		this.next_solver.add(this.ctx.mkAnd(q.p_preds));		
-		if (this.next_solver.check() == Status.SATISFIABLE) {
+		this.next_solver.add(this.ctx.mkAnd(q.shifted_preds));		
+		Status status = this.next_solver.check();
+		if (status == Status.SATISFIABLE) {
 			w = this.next_solver.getModel();
+		}
+		else if (status == Status.UNKNOWN) {
+			Assert.fail(Z3Err, "Z3 cannot find a model.");
 		}
 		this.next_solver.pop();
 		return w;
 	}
 
 	// Find an unsat core from unsat(F_i /\ T /\ ~q /\ q')
+	// Here, an unsat core is a set of predicates of q'.
+	// Therefore, it contains primed predicates.
+	// To have an inductive strethening, we need to unshift the found unsat core. 
 	private BoolExpr[] findUnsatCore(IC3_Frame F, IC3_StateK q) {
-		
+
 		this.next_solver.push();
 		this.next_solver.add(F.formula);
-		this.next_solver.add(this.ctx.mkAnd(q.p_preds));
-		int alen = q.preds.length;
-		BoolExpr[] assumptions = new BoolExpr[alen];
-		for (int i = 0; i < alen; i++) {
-			assumptions[i] = this.ctx.mkNot(q.preds[i]);			
-		}
-		this.next_solver.add(this.ctx.mkOr(assumptions));
-		Status status = this.next_solver.check(assumptions);
+		//this.next_solver.add(this.ctx.mkAnd(q.shifted_preds));
+		this.next_solver.add(this.ctx.mkNot(this.ctx.mkAnd(q.preds)));
+		Status status = this.next_solver.check(q.shifted_preds);
 		if (status != Status.UNSATISFIABLE) {
 			Assert.fail(Z3Err, "Z3 cannot find an unsat core.");
 		}
 		BoolExpr[] res = this.next_solver.getUnsatCore();
 		if (res.length == 0) {
-			Assert.fail(Z3Err, "Z3 cannot find an unsat core.");
+			res = q.shifted_preds;
 		}
 		this.next_solver.pop();
 		return res;
 	}
-	
-	// Construct an primed unsat core.
-	private BoolExpr[] constructPrimedUnsatCore(BoolExpr[] core) {
+
+	// Construct an unprimed unsat core.
+	private BoolExpr[] unshiftUnsatCore(BoolExpr[] core) {
 		int alen = core.length, dis = this.preds.length / 2;		
-		BoolExpr[] p_core = new BoolExpr[alen];		
-		for (int i = 0; i < alen; i++) {
+		BoolExpr[] unshifted_core = new BoolExpr[alen];		
+		for (int i = 0; i < core.length; i++) {
 			String str = core[i].toString();
-			for (int j = 0; j < dis; j++) {
+			for (int j = dis; j < this.preds.length; j++) {
 				if (str.indexOf(this.preds[j].toString()) >= 0) {
-					if (str.indexOf(" (not") >= 0) {
-						p_core[i] = this.negPreds[j + dis];
+					if (str.indexOf("(not") >= 0) {
+						unshifted_core[i] = this.negPreds[j - dis];
 					}
 					else {
-						p_core[i] = this.preds[j + dis];
+						unshifted_core[i] = this.preds[j - dis];
 					}
 					break;
 				}
 			}
 		}
-		return p_core;
+		return unshifted_core;
 	}
 	
+	// Negate a conjunction.
+	private BoolExpr negConj(BoolExpr[] conj) {
+		BoolExpr[] tmp = new BoolExpr[conj.length];
+		for (int i = 0; i < conj.length; i++) {
+			tmp[i] = this.ctx.mkNot(conj[i]);
+		}
+		BoolExpr res = this.ctx.mkOr(tmp);
+		return res;
+	}
+
 	// Remove bad states
-	private boolean removeCTI(BoolExpr[] s, BoolExpr[] p_s, FileWriter file) throws IOException {
-		IC3_StateK state0 = new IC3_StateK(s, p_s, this.k_ic3), curStateK, newState;
+	private boolean removeCTI(IC3_StateK badState, FileWriter file) throws IOException {		
 		ArrayList<IC3_StateK> states = new ArrayList<IC3_StateK>();
-		int i;
-		states.add(state0);
+		states.add(badState);
 		BoolExpr[] t, p_t;
 		Model w;
-		IC3_Clause clause, p_clause;
+		IC3_Clause indStr, shifted_indStr;
 		while (states.size() > 0) {
 			// System.out.println(this.next_solver.toString());
-			curStateK = this.getMinimalState(states);
+			IC3_StateK curStateK = this.getMinimalState(states);
 			if (this.hasBadStatesAtStep1(curStateK, file)) {				
 				return false;
 			}
 			// System.out.println(this.next_solver.toString());
-			i = this.findI(curStateK);
-			BoolExpr[] core = this.findUnsatCore(this.frames.get(i), curStateK),
-					p_core = this.constructPrimedUnsatCore(core);
-			clause = new IC3_Clause(this.ctx.mkOr(core));
-			p_clause = new IC3_Clause(this.ctx.mkOr(p_core));
-			this.addC(clause, p_clause, i + 2); 
+			int i = this.findI(curStateK);
+			BoolExpr[] unsatCore = this.findUnsatCore(this.frames.get(i), curStateK),
+					unshifted_unsatCore = this.unshiftUnsatCore(unsatCore);			
+			indStr = new IC3_Clause(this.negConj(unshifted_unsatCore));
+			shifted_indStr = new IC3_Clause(this.negConj(unsatCore));
+			// i + 2 since clause is added into frames 1, ..., i + 1 
+			this.addC(indStr , shifted_indStr, i + 2); 
 			if (i + 1 >= curStateK.k) {
 				return true;
 			}
+			// w is not always null.
+			// t is a predecessor of a bad state.
 			w = this.getW(this.frames.get(i + 1), curStateK);
 			t = this.getCurPreds(w);
-			p_t = this.constructPrimedPreds(t);
-			newState = new IC3_StateK(t, p_t, i + 1);
+			p_t = this.shiftCurPreds(w);
+			IC3_StateK newState = new IC3_StateK(t, p_t, i + 1);
 			newState.next = curStateK;
 			states.add(newState);
 		}
 		return false;
 	}
 
-	private boolean extendFrontier(FileWriter file) throws IOException {
+	private void addNewFrame() {
 		IC3_Frame newFrame = this.constructPFrame();
 		this.frames.add(newFrame);
-		Model model = null;
+		this.k_ic3++;
+	}
+
+	private boolean extendFrontier(FileWriter file) throws IOException {
+		this.addNewFrame();
 		this.next_solver.push();
-		this.next_solver.add(this.ctx.mkNot(this.next_inv));		
-		this.next_solver.add(this.frames.get(this.k_ic3).formula);		
+		this.next_solver.add(this.ctx.mkNot(this.next_inv));
+		this.next_solver.add(this.frames.get(this.k_ic3 - 1).formula);		
+		// check sat(T /\ ~P /\ F_k)
+		// nextBadState --> ~P' and in F_{k+1} 
+		// curBadState is a predecessor of nextBadState and in F_k.
 		while (this.next_solver.check() == Status.SATISFIABLE) {
-			model = this.next_solver.getModel();
+			Model model = this.next_solver.getModel();
 			BoolExpr[] badPreds = this.getCurPreds(model);
-			//			System.out.println(this.next_solver.toString());
+			BoolExpr[] shifted_badPreds = this.shiftCurPreds(model);
+			IC3_StateK curBadState = new IC3_StateK(badPreds, shifted_badPreds, this.k_ic3 - 1);
+			BoolExpr[] nextBadPreds = this.getPrimedPreds(model);
+			BoolExpr[] unshifted_nextBadPreds = this.unshiftPrimedPreds(model);
+			IC3_StateK nextBadState = new IC3_StateK(nextBadPreds, unshifted_nextBadPreds, this.k_ic3);
+			curBadState.next = nextBadState;
 			this.next_solver.pop();
-			//			System.out.println(this.next_solver.toString());
-			BoolExpr[] p_badPreds = this.constructPrimedPreds(badPreds);
-			if (!this.removeCTI(badPreds, p_badPreds, file)) {
+			if (!this.removeCTI(curBadState, file)) {
 				return false;
 			}			
 			this.next_solver.push();
 			this.next_solver.add(this.ctx.mkNot(this.next_inv));
-			this.next_solver.add(this.frames.get(this.k_ic3).formula);
+			this.next_solver.add(this.frames.get(this.k_ic3 - 1).formula);
 		}		
 		this.next_solver.pop();		
 		return true;
 	}
-
-	private boolean prove(FileWriter file) throws IOException {
+		
+	private boolean prove(FileWriter file) throws IOException {		
 		if (!ic3_checkInit(file)) {
 			return false;
 		}
@@ -729,15 +834,14 @@ public class IC3_Checker implements Z3Constants {
 			return false;
 		}
 		this.k_ic3 = 1;
-		while (true) {
+		while (true) {		
 			if (!this.extendFrontier(file)) {
 				return false;
 			}
 			this.propagateClauses();
 			if (this.checkFrames(file)) {
 				return true;
-			}
-			this.k_ic3++;
+			}			
 		}		
 	}
 }

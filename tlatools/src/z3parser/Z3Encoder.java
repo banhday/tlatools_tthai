@@ -109,7 +109,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	
 	private Z3Node z3NusmvInv;
 	
-	public Z3Encoder(String fileName) {		
+	public Z3Encoder(String fileName) {
+		this.dir = System.getProperty("user.dir") + "//";
 		int len = fileName.length();
 		if (fileName.startsWith(".tla", len - 4)) {
 			specFile = fileName.substring(0, len - 4);
@@ -3196,9 +3197,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	}
 
 	
-	private final void printZ3Spec() throws IOException {
-		this.dir = "D:\\EMCL\\TUW\\Thesis\\Z3API\\z3-master\\build\\test_ToyExample\\";
-		this.dir = "D:\\TLAToolbox-1.5.2-win32.win32.x86_64\\MyExamples\\bcastFolklore_lazyValues_100.toolbox\\parse\\";
+	private final void printZ3Spec() throws IOException {		
+//		this.dir = System.getProperty("user.dir" + "\\");
 		this.printRawZ3SpecToFile();
 		this.printRawZ3SpecToStdout();
 		this.printRefinedZ3SpecToFile();
@@ -4037,7 +4037,12 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	}
 	
 	public String getDir() {
-		return this.dir;
+		if (this.dir != null || !this.dir.equals(NoName)) {
+			return this.dir;
+		}
+		else {
+			return "";
+		}
 	}
 	
 	public String getSpecFileName() {
