@@ -6,7 +6,7 @@ import tla2sany.semantic.SemanticNode;
 import tlc2.tool.ToolGlobals;
 import util.Assert;
 
-public class Z3Node implements ToolGlobals, Z3Constants {
+public class Z3Node implements ToolGlobals, Z3Constants, Z3ErrorCode {
 	public String name;											// in z3
 	public int opCode;											// in tla2	
 	public int subOpCode;										// in tla2, just to check whether or not a variabe is a function, a record or a tuple

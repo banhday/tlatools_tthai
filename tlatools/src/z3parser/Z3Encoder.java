@@ -42,7 +42,7 @@ import util.UniqueString;
 
 import java.io.*;
 
-public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
+public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3ErrorCode {
 	private String specFile;
 	private SpecObj spec;
 	private FilenameToStream resolver;	
@@ -70,45 +70,47 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	private ArrayList<String> negPredNames;
 	public  Z3Tool z3Tool;
 	private ArrayList<String> fcnList;
-	
+
 	private ArrayList<Z3Node> tfcn; // It's only for AtNodeKind
 	private ArrayList<Z3Node> tlhs; // It's only for AtNodeKind
-	
+
 	private ArrayList<Z3Node> z3SpecVars;
-	
+
 	private Z3Node z3Extensionality;
 	private Z3Node z3IsAFcn;
 	private String z3StrExtensionality;
 	private String z3StrIsAFcn;
-	
+
 	private ArrayList<Z3Node> z3FormalParamNodes;
-	
+
 	public static int SortNo = 4;
-	
+
 	public Z3Node intSort, boolSort, strSort, setIntSort, setBoolSort, setStrSort;
-	
+
 	public ConstraintChecker checker;	
 	private int taskID;	
 	private ArrayList<Z3Node> freshVars;	
 	private ArrayList<Z3Node> typeInfos;
-	
+
 	private String dir;
-	
+
 	private ArrayList<Z3Node> lazyValues;
 	private ArrayList<Z3Node> freshVarAssertions;
-	
+
 	private ArrayList<Z3Node> initInvs;
 	private ArrayList<Z3Node> nextInvs;
 	private ArrayList<Z3Node> axioms;
 	private ArrayList<String> files;
-	
+
 	private String nusmvInv;
 	private String p_nusmvInv;
 	public  Z3Node raw_init_inv;
 	public  Z3Node raw_next_inv;
-	
+
 	private Z3Node z3NusmvInv;
-	
+
+	private TypeChecker typeChecker;
+
 	public Z3Encoder(String fileName) {
 		this.dir = System.getProperty("user.dir") + "//";
 		int len = fileName.length();
@@ -122,7 +124,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 
 		resolver = null;
 		spec = new SpecObj(fileName, null);
-				
+
 		try {
 			SANY.frontEndMain(spec, fileName, ToolIO.out);
 		}
@@ -131,12 +133,12 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			fe.printStackTrace();   
 			ToolIO.out.println(fe);			
 		}
-		
+
 		this.tool = new Tool(specDir, specFile, configFile, resolver);		
 		this.actionNames = new ArrayList<String>();		 					
 		this.preTool 		= new Preprocessor(this.tool, this.actionNames);
 		this.preTool.GetActions(spec);
-//		this.preTool.ChangeActionNames();	
+		//		this.preTool.ChangeActionNames();	
 		this.sortList		= new ArrayList<Z3Node>();
 		this.stringList = new ArrayList<Z3Node>();
 		int alen = 2 * this.tool.variablesNodes.length;
@@ -147,7 +149,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.defList[i] = new Z3Pair();
 			this.defList[i].hasDef = false;
 		}
-		
+
 		this.z3SortDeclarations = "; Sort Declarations\n";
 		this.z3VarDeclarations 	= "; Variable Declarations\n";
 		this.z3FcnDeclarations  = "; Function Declarations\n";
@@ -155,7 +157,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.strNext = NoCommand;
 		this.z3Actions = new Z3Node[this.actionNames.size()];
 		this.z3StrActions = new String[this.actionNames.size()];
-				
+
 		this.typeOK = null;
 		this.strTypeOK = "; String Declarations\n";
 		this.preds = new ArrayList<Z3Node>();
@@ -164,18 +166,18 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.negPredNames = new ArrayList<String>();
 		this.z3Tool = new Z3Tool(this);
 		this.fcnList = new ArrayList<String>();
-		
+
 		this.tfcn = new ArrayList<Z3Node>();
 		this.tlhs = new ArrayList<Z3Node>();
 		this.z3SpecVars = new ArrayList<Z3Node>();
-		
+
 		this.z3Extensionality = null;
 		this.z3IsAFcn = null;
 		this.z3StrExtensionality = "; extensionality\n";
 		this.z3StrIsAFcn = "; IsAFcn\n";
-		
+
 		this.z3FormalParamNodes = new ArrayList<Z3Node>();
-		
+
 		this.boolSort = null;
 		this.intSort = null;
 		this.strSort = null;
@@ -187,13 +189,15 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.typeInfos = new ArrayList<Z3Node>();
 		this.lazyValues = new ArrayList<Z3Node>();
 		this.freshVarAssertions = new ArrayList<Z3Node>();
-		
+
 		this.initInvs = new ArrayList<Z3Node>();
 		this.nextInvs = new ArrayList<Z3Node>();
 		this.axioms 	= new ArrayList<Z3Node>();
 		this.files 		= new ArrayList<String>();
+		
+		this.typeChecker = new TypeChecker(this);
 	}	
-	
+
 	public final void run() throws IOException {
 		this.z3Tool.createDefaultSortList();
 		this.createVarList();
@@ -209,7 +213,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.makeVarDeclarations();		
 		this.printZ3Spec();		
 	}
-			
+
 	// Get sort info of elements in set1
 	public final Z3Node getElemSort(Z3Node set1) {
 		return set1.getElemSort();		
@@ -243,7 +247,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return null;
 		}
 	}
-				
+
 	//The original function lookup(SymbolNode var) is from Context.java.
 	// Because we do not need the value of a function, a record, ...
 	// We need only its name. Therefore, I decide to create a new function 
@@ -252,14 +256,14 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 	// Because cur.next and cur.name are private, I write two new functions
 	// getNext() and getName() in Context.java.
 	private final String lookup(Context c, SymbolNode var) {
-   Context cur;
-   for (cur = c; cur.getName() != null; cur = cur.getNext()) {
-     if (var == cur.getName()) return cur.getName().getName().toString();
-   }
-   if (cur == Context.Empty) return NoName;
-   return this.lookup(cur.getNext(), var);
- }
-		
+		Context cur;
+		for (cur = c; cur.getName() != null; cur = cur.getNext()) {
+			if (var == cur.getName()) return cur.getName().getName().toString();
+		}
+		if (cur == Context.Empty) return NoName;
+		return this.lookup(cur.getNext(), var);
+	}
+
 	public final Object lookup(SymbolNode opNode, Context c, boolean cutoff)
 	{
 		// Only for params of actions
@@ -267,20 +271,20 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		Object result = c.lookup(opNode, cutoff && isVarDecl);
 		if (result != null)
 			return result;
-//
-//		result = opNode.getToolObject(TLCGlobals.ToolId);
-//		if (result != null)
-//			return result;
+		//
+		//		result = opNode.getToolObject(TLCGlobals.ToolId);
+		//		if (result != null)
+		//			return result;
 
 		if (opNode.getKind() == UserDefinedOpKind)
 		{
 			// Changed by Thanh Hai
 			// just for IsAFcn
-			
-//			if (opNode.getName().toString().equals("IsAFcn")) {
-//				return opNode;
-//			}
-			
+
+			//			if (opNode.getName().toString().equals("IsAFcn")) {
+			//				return opNode;
+			//			}
+
 			ExprNode body = ((OpDefNode) opNode).getBody();
 			result = body.getToolObject(TLCGlobals.ToolId);
 			while ((result == null) && (body.getKind() == SubstInKind)) {
@@ -293,14 +297,14 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return opNode;
 	}
-	
+
 	// Remove s0 and TLCState.Empty
 	// In Tool.java
 	// Change Value to TypedSM2Node
 	private final Z3Node eval(SemanticNode expr, Context c) { 
 		return this.eval(expr, c, EvalControl.Clear);		
 	}
-	
+
 	// Remove APSubstInKind, we don't have theorems and assumptions 
 	// Remove case DecimalKind, TLC cannot evaluate decimal numbers.	
 	// Remove s0 and s1, we don't evaluate any expressions.
@@ -394,18 +398,18 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			if (expr instanceof FormalParamNode) {
 				FormalParamNode pNode = (FormalParamNode) expr;
 				String name = pNode.getName().toString();
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+				////////////////////////////////////////////////////////////////////////////////
+				////////////////////////////////////////////////////////////////////////////////
 				// Can we get more param's info from a corresponding function? 
 				Z3Node node = new Z3Node(name, NoCode, null, null, NoKind, iNull);
-////////////////////////////////////////////////////////////////////////////////				
+				////////////////////////////////////////////////////////////////////////////////				
 				return node;
 			}
 			return null;
 		}
 		}
 	}
-	
+
 	// Remove states s0 and s1
 	// In Tool.java
 	private final Z3Node evalAppl(OpApplNode expr, Context c, int control) {
@@ -413,7 +417,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		SymbolNode opNode = expr.getOperator();
 		int opcode = BuiltInOPs.getOpCode(opNode.getName());
 		Z3Node node = new Z3Node(NoName, NoCode, null, null, NoKind, iNull);
-		
+
 		if (opcode == 0) {
 			// This is a user-defined operator with one exception: it may
 			// be substed by a builtin operator. This special case occurs
@@ -431,7 +435,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 				LazyValue lv = (LazyValue)val;
 				return this.eval(lv.expr, lv.con, control);					
 			}
-			
+
 			// Instead of res from Value, now we use node from Z3Node.
 			if (val instanceof OpDefNode) {
 				OpDefNode opDef = (OpDefNode)val;
@@ -638,8 +642,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x);
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -668,8 +672,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x.clone());
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -777,7 +781,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			Z3Node rhs = this.eval(pairArgs[1], c, control);
 			// for AtNodeKind
 			// What does it mean? @_@
-///////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////
 			int size = this.tfcn.size() - 1;
 			if (size >= 2) {
 				Z3Node tmp = this.tfcn.get(size - 2);
@@ -785,7 +789,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 					tmp.name = this.tfcn.get(size - 1).name;
 				}
 			}			
-///////////////////////////////////////////////////////////			
+			///////////////////////////////////////////////////////////			
 			this.tfcn.remove(this.tfcn.size() - 1);
 			this.tlhs.remove(this.tlhs.size() - 1);
 			// for AtNodeKind			
@@ -829,8 +833,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.checker.unifySort_equivSort(x, bvar);
 			this.z3Tool.replaceNode(x.name, z3Body, bvar);
 			node.addBoundedVar(bvar);
-//			Z3Node z3Body = this.eval(fbody, c, control);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(fbody, c, control);
+			//			node.addBoundedVar(x);
 			node.addDomain(S);
 			node.addExpr(z3Body);
 			this.checker.fc_check(node);
@@ -909,8 +913,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.checker.unifySort_equivSort(x, bvar);
 			this.z3Tool.replaceNode(x.name, z3Body, bvar);
 			node.addBoundedVar(bvar);
-//			Z3Node z3Body = this.eval(body, c, control);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body, c, control);
+			//			node.addBoundedVar(x);
 			node.addDomain(S);			
 			node.addExpr(z3Body);								
 			this.z3FormalParamNodes.remove(this.z3FormalParamNodes.size() - 1);
@@ -965,8 +969,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.checker.unifySort_equivSort(x, bvar);
 			this.z3Tool.replaceNode(x.name, p, bvar);			
 			node.addBoundedVar(bvar);
-//			Z3Node p = this.eval(pred, c, control);
-//			node.addBoundedVar(x);			
+			//			Z3Node p = this.eval(pred, c, control);
+			//			node.addBoundedVar(x);			
 			node.addDomain(S);						
 			node.addExpr(p);
 			this.z3FormalParamNodes.remove(this.z3FormalParamNodes.size() - 1);			
@@ -1156,9 +1160,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return node;
 		}
 		case OPCODE_unchanged: {
-//			node.addOperand(this.eval(args[0], c, EvalControl.setPrimed(control)));
-//			node = (this.eval(args[0], c, EvalControl.setPrimed(control)));
-//			node.setSort(this.boolSort);
+			//			node.addOperand(this.eval(args[0], c, EvalControl.setPrimed(control)));
+			//			node = (this.eval(args[0], c, EvalControl.setPrimed(control)));
+			//			node.setSort(this.boolSort);
 			node = this.processUnchanged(args[0], ActionItemList.Empty, c);
 			return node;
 		}			
@@ -1171,7 +1175,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 	}
 
-  // Remove state, s1, nss and change  StateVec to Z3Node
+	// Remove state, s1, nss and change  StateVec to Z3Node
 	private final Z3Node getNextStates(Action action) {
 		ActionItemList acts = ActionItemList.Empty;
 		return this.getNextStates(action.pred, acts, action.con);		
@@ -1219,7 +1223,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return null;
 	}
-	
+
 	// Remove s0, s1, nss
 	// Change TLCState to Z3Value
 	private final Z3Node getNextStates(ActionItemList acts) {
@@ -1256,7 +1260,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return node;
 	}
-	
+
 	// Remove s0, s1, nss, ThmOrAssumpDefNode, cdot, aa, sa
 	// Change TLCState to Z3Node
 	// Change resState in TLCState to tmp in Z3Node
@@ -1266,7 +1270,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		SymbolNode opNode = pred.getOperator();
 		int opcode = BuiltInOPs.getOpCode(opNode.getName());
 		Z3Node node = new Z3Node(NoName, NoCode, null, null, NoKind, iNull);
-		
+
 		if (opcode == 0) {
 			// This is a user-defined operator with one exception: it may
 			// be substed by a builtin operator. This special case occurs
@@ -1278,7 +1282,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			// However, since TLA+ have many "user" defined operators, 
 			// we still need to look up their meanings.
 			Object val = this.lookup(opNode, c, false);
-			
+
 			if (val instanceof LazyValue) {
 				LazyValue lv = (LazyValue)val;
 				return this.getNextStates(lv.expr, acts, lv.con);					
@@ -1293,7 +1297,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 						Z3Node var = this.getNextStates(args[0], acts, c);
 						node = new Z3Node("IsAFcn", OPCODE_IsAFcn, this.boolSort, null, var, tla_atom, NoSet);
 						return node;
-						
+
 					}
 					else {
 						Context c1 = this.tool.getOpContext(opDef, args, c, true);   
@@ -1301,7 +1305,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 					}					
 				}
 			}
-					
+
 			if (alen == 0) {
 				if (val instanceof MethodValue) {					
 					// I guess I need to translate this node if MethodValue is Int, 
@@ -1453,7 +1457,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 				}
 			}
 		}
-		
+
 		node.opCode = opcode;		
 		switch (opcode) {
 		case OPCODE_cl:     			// ConjList
@@ -1519,9 +1523,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x.clone());
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			z3Body.setSort(this.boolSort);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			z3Body.setSort(this.boolSort);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -1556,9 +1560,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x.clone());
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			z3Body.setSort(this.boolSort);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			z3Body.setSort(this.boolSort);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -1740,8 +1744,8 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return node;
 		}
 		}	
- }	
-	
+	}	
+
 	// Remove s0, s1, nss, LazyValue
 	// Change TLCState to Z3Node
 	private final Z3Node processUnchanged(SemanticNode expr, ActionItemList acts, Context c) {
@@ -1814,7 +1818,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return tmp1;
 		}		
 	}
-	
+
 	private final Z3Node getInitStates(SemanticNode init, ActionItemList acts, Context c) {
 		switch (init.getKind()) {
 		case OpApplKind:
@@ -1842,7 +1846,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 
 		// Remove APSubstInKind
-		
+
 		/***********************************************************************
 		 * LabelKind class added by LL on 13 Jun 2007.                          *
 		 ***********************************************************************/
@@ -1885,7 +1889,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			// However, since TLA+ have many "user" defined operators, 
 			// we still need to look up their meanings.
 			Object val = this.lookup(opNode, c, false);
-			
+
 			if (val instanceof LazyValue) {
 				LazyValue lv = (LazyValue)val;
 				return this.getInitStates(lv.expr, acts, lv.con);					
@@ -1907,12 +1911,12 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 					}					
 				}				
 			}
-			
+
 			// Remove ThmOrAssumpDefNode since we do not support theoroms and assumptions.
-			
+
 			if (alen == 0) {
 				if (val instanceof MethodValue) {
-				// I guess I need to translate this node if MethodValue is Int, 
+					// I guess I need to translate this node if MethodValue is Int, 
 					// or Boolean.					
 					node.name = ((MethodValue) val).md.getName();						
 					if (node.name.equals("Nat") || node.name.equals("Int")) {
@@ -2120,9 +2124,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x.clone());
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			z3Body.setSort(this.boolSort);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			z3Body.setSort(this.boolSort);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -2158,9 +2162,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			x.opCode = OPCODE_bv;
 			this.z3FormalParamNodes.add(x.clone());
 			SemanticNode body = args[0];
-//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
-//			z3Body.setSort(this.boolSort);
-//			node.addBoundedVar(x);
+			//			Z3Node z3Body = this.eval(body , c, EvalControl.Clear);
+			//			z3Body.setSort(this.boolSort);
+			//			node.addBoundedVar(x);
 			Z3Node z3Body = this.eval(body, c, EvalControl.Clear),
 					bvar = this.z3Tool.createBoundedVar();
 			this.checker.unifySort_equivSort(x, bvar);
@@ -2318,7 +2322,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		}
 	}		
-	
+
 	private final void createVarList() {
 		// create vars
 		int alen = this.tool.variablesNodes.length;
@@ -2332,7 +2336,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.varList[i].opCode = OPCODE_var;
 		}
 	}
-	
+
 	private final void sortVars(int index, String name) {
 		int pos = index;
 		while (pos > 0) {
@@ -2346,7 +2350,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		this.varList[pos].name = name;		
 	}
-	
+
 	public final int getVarIndex(String name) {
 		int left = 0, right = 2 * this.tool.variablesNodes.length - 1, middle, res;
 		while (left <= right) {
@@ -2363,7 +2367,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return -1;
 	}
-	
+
 	private final Z3Node getVar(Z3Node node, String name) {
 		if (!name.equals(NoName)) {
 			int index = this.getVarIndex(name);
@@ -2373,7 +2377,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return node;
 	}
-	
+
 	private final void createTypeInfo_PrimedVars(Z3Node sortInfo) {
 		Z3Node z3Node, z3LHS, z3dLHS, z3pLHS, z3RHS;
 		int exprNo = sortInfo.getOperandSize();
@@ -2390,7 +2394,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}						
 		}
 	}
-	
+
 	private final void getPrimitiveTypeInfo(Z3Node sortInfo) {
 		Z3Node z3Node, z3LHS, z3dLHS, z3pLHS, z3RHS;		
 		int exprNo = sortInfo.getOperandSize();
@@ -2522,7 +2526,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.varList[pIndex] = z3pLHS;
 		}				
 	}
-	
+
 	private final Z3Node bindZ3Node(Z3Node node, boolean flag) {
 		if (node != null) {
 			int index = this.getVarIndex(node.name);
@@ -2559,7 +2563,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}				
 		return null;		
 	}
-	
+
 	public final boolean isSort(Z3Node node) {
 		int alen = this.sortList.size();
 		Z3Node sort = null;
@@ -2572,7 +2576,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return false;		
 	}
-	
+
 	private final Z3Node createTypeOK_PrimedVars(Z3Node sortInfo) {
 		Z3Node res = new Z3Node("and", OPCODE_land, this.boolSort, null, tla_atom, NoSet),
 				z3Node, z3LHS, z3RHS, z3Node1, z3pLHS;
@@ -2594,7 +2598,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return res;
 	}		
-	
+
 	public final Z3Node getDef(Z3Node node) {
 		int index = this.getVarIndex(node.name);
 		if (index >= 0 && this.defList[index].hasDef) {
@@ -2602,24 +2606,24 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return node;
 	}
-	
+
 	private final void resetDefList() {
 		int alen = 2 * this.tool.variablesNodes.length;
 		for (int i = 0; i < alen; i++) {
 			this.defList[i].hasDef = false;
 		}
 	}
-	
+
 	public final boolean hasDef(int i) {
 		return this.defList[i].hasDef;
 	}
-	
+
 	public final void addDef(int i, Z3Node def, int depth) {
 		this.defList[i].def = def.clone();
 		this.defList[i].hasDef = true;
 		this.defList[i].depth = depth;
 	}
-	
+
 	public final void removeDef(int depth) {
 		int alen = this.defList.length;
 		for (int i = 0; i < alen; i++) {
@@ -2628,7 +2632,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}
 		}
 	}
-	
+
 	private final void addStringVar(Z3Node newStr) {
 		boolean flag = true;
 		int stringSize = this.stringList.size();
@@ -2643,7 +2647,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.stringList.add(newStr.clone());
 		}
 	}
-	
+
 	private final void addStringVars(Z3Node node) {
 		int fieldSize = node.getFieldSize();
 		for (int i = 0; i < fieldSize; i++) {
@@ -2651,7 +2655,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.addStringVar(field);
 		}
 	}
-	
+
 	private final Z3Node rewriteTypeOK(Z3Node node) {
 		Z3Node res = node;
 		if (res.getOperandSize() == 0) {
@@ -2662,7 +2666,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return res;
 	}
-	
+
 	private final void translateTypeOK() {
 		this.taskID = typeOKTask;
 		Action[] inv = this.tool.getInvariants();		
@@ -2677,13 +2681,15 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 				rhs = this.eval(inv[j].pred, inv[j].con, EvalControl.Clear);
 				if (rhs.opCode == OPCODE_cl || rhs.opCode == OPCODE_land) {
 					this.getPrimitiveTypeInfo(rhs);
-//					rhs = this.bindZ3Node(rhs, true);
-//					rhs = this.createTypeOK_PrimedVars(rhs);
+					//					rhs = this.bindZ3Node(rhs, true);
+					//					rhs = this.createTypeOK_PrimedVars(rhs);
 					this.createTypeInfo_PrimedVars(rhs);
 					this.z3Tool.setTaskID(typeOKTask);
+					this.typeChecker.checkBeforeTranslation(rhs);
 					rhs = this.z3Tool.rewrite(rhs, true);
 					rhs = this.rewriteTypeOK(rhs);
 					this.z3Tool.checkNamesTypes(rhs);
+					this.typeChecker.checkAfterTranslation(rhs);
 					if (rhs != null) {
 						rhs = this.z3Tool.simplify(rhs);
 						this.typeOK = new Z3Node("assert", OPCODE_assert, this.boolSort, null, rhs, tla_atom, NoSet);					
@@ -2692,16 +2698,15 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 					else {
 						this.strTypeOK = "";
 					}
-					int no = rhs.getOperandSize();
+					int no = rhs.getOperandSize();					
 					for (int k = 0; k < no; k++) {
 						this.typeInfos.add(rhs.getOperand(k));
 					}
 				}
 			}
-		}
-//		System.out.println(this.strTypeOK);
+		}		
 	}
-		
+
 	private final void translateActions() {	
 		this.taskID = nextTask;
 		Action[] actions = this.tool.getActions();
@@ -2712,18 +2717,20 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			rhs = this.getNextStates(actions[i]);
 			rhs = this.bindZ3Node(rhs, true);
 			this.z3Tool.setTaskID(nextTask);
+			this.typeChecker.checkBeforeTranslation(rhs);
 			rhs = this.z3Tool.rewrite(rhs, true);
 			this.z3Tool.checkNamesTypes(rhs);
-			rhs = this.z3Tool.simplify(rhs);
+			rhs = this.z3Tool.simplify(rhs);			
 			lhs = new Z3Node(this.actionNames.get(i), OPCODE_const, this.strSort, null, tla_atom, NoSet);
 			Z3Node eqAction = new Z3Node("=", OPCODE_eq, this.boolSort, null, lhs, rhs, tla_atom, NoSet);
 			this.z3Actions[i] = new Z3Node("assert", OPCODE_assert, this.boolSort, null, eqAction, tla_atom, NoSet); 
 			this.z3Tool.checkNamesTypes(this.z3Actions[i]);
+			this.typeChecker.checkAfterTranslation(rhs);
 			this.z3StrActions[i] = "\n" + this.z3Tool.printZ3Node(this.z3Actions[i], "") + "\n\n";
-//			this.z3StrActions[i] = this.z3Tool.makeAssertion(this.z3StrActions[i]);
+			//			this.z3StrActions[i] = this.z3Tool.makeAssertion(this.z3StrActions[i]);
 		}               		
 	}
-	
+
 	private final void translateNext() {
 		this.taskID = nextTask;
 		int alen = this.actionNames.size();
@@ -2753,9 +2760,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.z3Tool.checkNamesTypes(this.z3Next);
 		this.strNext = "\n" + this.z3Tool.printZ3Node(this.z3Next, "") + "\n\n";
 		this.strNext = this.strNext + "\n (assert Next) \n\n";	
-//		this.strNext = this.z3Tool.makeAssertion(this.strNext);
+		//		this.strNext = this.z3Tool.makeAssertion(this.strNext);
 	}
-	
+
 	private final void translateInit() {
 		this.taskID = initTask;
 		Vect init = this.tool.getInitStateSpec();
@@ -2770,40 +2777,42 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			rhs = this.getInitStates(elem.pred, acts, elem.con);
 			rhs = this.bindZ3Node(rhs, true);
 			this.z3Tool.setTaskID(initTask);
+			this.typeChecker.checkBeforeTranslation(rhs);
 			rhs = this.z3Tool.rewrite(rhs, true);			
 			this.z3Tool.checkNamesTypes(rhs);
-			rhs = this.z3Tool.simplify(rhs);
+			this.typeChecker.checkAfterTranslation(rhs);
+			rhs = this.z3Tool.simplify(rhs);			
 			lhs = new Z3Node("Init", OPCODE_const, this.boolSort, null, tla_atom, NoSet);			
 			eqInit = new Z3Node("=", OPCODE_eq, this.boolSort, null, lhs, rhs, tla_atom, NoSet);
 			this.z3Init = new Z3Node("assert", OPCODE_assert, this.boolSort, null, eqInit, tla_atom, NoSet);
 			this.z3SpecVars.add(lhs.clone());
 			this.strInit = "\n" + this.z3Tool.printZ3Node(this.z3Init, "") + "\n\n";			
 		}				
-//		this.strInit = this.z3Tool.makeAssertion(this.strInit);
+		//		this.strInit = this.z3Tool.makeAssertion(this.strInit);
 	}     		
-	
+
 	private void makeVarDeclarations() {
 		int alen, i;
 		String tmp = NoCommand;
-		
+
 		alen = this.varList.length;
 		for (i = 0; i < alen; i++) {
 			tmp = this.z3Tool.makeVarDeclaration(this.varList[i]);
 			this.z3VarDeclarations = this.z3VarDeclarations + tmp;
 		}
-		
+
 		alen = this.stringList.size();
 		for (i = 0; i < alen; i++) {
 			tmp = this.z3Tool.makeVarDeclaration(this.stringList.get(i));
 			this.z3VarDeclarations = this.z3VarDeclarations + tmp;
 		}
-		
+
 		alen = this.z3SpecVars.size();
 		for (i = 0; i < alen; i++) {
 			tmp = this.z3Tool.makeVarDeclaration(this.z3SpecVars.get(i));
 			this.z3VarDeclarations = this.z3VarDeclarations + tmp;
 		}
-		
+
 		alen = this.predNames.size() / 2;
 		for (i = 0; i < alen; i++) {
 			Z3Node pred = new Z3Node(this.predNames.get(i), OPCODE_const, this.boolSort, null, tla_atom, NoSet),
@@ -2812,7 +2821,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.freshVars.add(pred);
 			this.freshVarAssertions.add(assertion);
 		}
-		
+
 		alen = this.predNames.size() / 2;
 		for (i = alen; i < this.predNames.size(); i++) {
 			Z3Node pred = new Z3Node("p_" + this.predNames.get(i - alen), OPCODE_const, this.boolSort, null, tla_atom, NoSet),
@@ -2821,7 +2830,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.freshVars.add(pred);
 			this.freshVarAssertions.add(assertion);
 		}
-		
+
 		alen = this.freshVars.size();
 		for (i = 0; i < alen; i++) {
 			tmp = this.z3Tool.makeVarDeclaration(this.freshVars.get(i));
@@ -2832,7 +2841,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.z3VarDeclarations = this.z3VarDeclarations + "\n" + this.z3Tool.printZ3Node(this.freshVarAssertions.get(i), "") + "\n";			
 		}				
 	}
-	
+
 	private void makeSortDeclarations() {
 		int alen = this.sortList.size();
 		String cmd = "";
@@ -2868,7 +2877,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.z3FcnDeclarations = this.z3FcnDeclarations + cmd;												
 		}	
 	}
-	
+
 	private final void printRawZ3SpecToStdout() throws IOException {
 		System.out.println(this.z3SortDeclarations);
 		System.out.println(this.z3VarDeclarations);
@@ -2882,7 +2891,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			System.out.println(this.z3Tool.makeStringConstraint(this.stringList));
 		}
 	}
-	
+
 	private final void printRawZ3SpecToFile() throws IOException {
 		FileWriter file = new FileWriter(this.dir + this.specFile + ".txt");
 		file.write(this.z3SortDeclarations);
@@ -2908,7 +2917,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		file.flush();
 		file.close();
 	}
-	
+
 	private final void printRefinedZ3SpecToFile() throws IOException {
 		FileWriter file = new FileWriter(this.dir + "refinedspec_" + this.specFile + ".txt");
 		file.write(this.z3SortDeclarations);
@@ -2964,7 +2973,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		file.flush();
 		file.close();
 	}
-	
+
 	private final void makeAssertsion(ArrayList<Z3Node> list, Z3Node node) {		
 		if (node.opCode == OPCODE_land) {
 			int alen = node.getOperandSize();
@@ -2978,7 +2987,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			list.add(assertion);
 		}
 	}
-	
+
 	private final void printInitInvToFile(FileWriter file) throws IOException {
 		for (int i = 0; i < this.initInvs.size(); i++) {
 			Z3Node assertion = new Z3Node("assert", OPCODE_assert, this.boolSort, null, this.initInvs.get(i), tla_atom, NoSet);
@@ -2987,7 +2996,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			file.flush();	
 		}		
 	}
-	
+
 	private final void printNextInvToFile(FileWriter file) throws IOException {
 		for (int i = 0; i < this.nextInvs.size(); i++) {
 			Z3Node assertion = new Z3Node("assert", OPCODE_assert, this.boolSort, null, this.nextInvs.get(i), tla_atom, NoSet);
@@ -2996,13 +3005,13 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			file.flush();	
 		}		
 	}
-	
+
 	private final void printRefinedInitToFile() throws IOException {
 		ArrayList<Z3Node> list = new ArrayList<Z3Node>();
 		String fileName = this.dir + "init_" + this.specFile + ".txt";
 		this.files.add(fileName);
 		FileWriter file = new FileWriter(fileName);
-//		file.write("(set-option :produce-unsat-cores true)\n\n");
+		//		file.write("(set-option :produce-unsat-cores true)\n\n");
 		file.flush();
 		file.write(this.z3SortDeclarations);
 		file.flush();
@@ -3042,18 +3051,18 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			file.write(this.z3Tool.makeStringConstraint(this.stringList));
 			file.flush();
 		}
-//		for (int i = 0; i < this.predNames.size() / 2; i++) {
-//			String str = "\n(assert (! " + this.predNames.get(i) + " :named lbl_" + this.predNames.get(i) + "))\n\n";
-//			file.write(str);
-//			file.flush();
-//		}
-//		this.printInitInvToFile(file);		
-//		file.flush();
-//		file.write("(check-sat)\n");
-//		file.flush(); 
+		//		for (int i = 0; i < this.predNames.size() / 2; i++) {
+		//			String str = "\n(assert (! " + this.predNames.get(i) + " :named lbl_" + this.predNames.get(i) + "))\n\n";
+		//			file.write(str);
+		//			file.flush();
+		//		}
+		//		this.printInitInvToFile(file);		
+		//		file.flush();
+		//		file.write("(check-sat)\n");
+		//		file.flush(); 
 		file.close();
 	}
-	
+
 	private final void printRefinedActionToFile(Z3Node node, String str) throws IOException {
 		if (node.opCode == OPCODE_assert) {
 			ArrayList<Z3Node> list = new ArrayList<Z3Node>();
@@ -3096,20 +3105,20 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 					file.write(this.z3Tool.makeStringConstraint(this.stringList));
 					file.flush();
 				}
-//				this.printNextInvToFile(file);				
-//				file.flush();
-//				file.write("(check-sat)\n");
-//				file.flush(); 
+				//				this.printNextInvToFile(file);				
+				//				file.flush();
+				//				file.write("(check-sat)\n");
+				//				file.flush(); 
 				file.close();
 			}
 		}					
 	}
-	
+
 	private final void printRefinedNextToFile() throws IOException {
 		String fileName = this.dir + "next_" + this.specFile + ".txt";
 		this.files.add(fileName);
 		FileWriter file = new FileWriter(fileName);
-//		file.write("(set-option :produce-unsat-cores true)");
+		//		file.write("(set-option :produce-unsat-cores true)");
 		file.flush();
 		file.write(this.z3SortDeclarations);
 		file.flush();
@@ -3140,29 +3149,29 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			file.write(this.z3Tool.makeStringConstraint(this.stringList));
 			file.flush();	
 		}			
-//		this.printNextInvToFile(file);
-//		file.flush(); 
-//		file.write("(check-sat)\n");
-//		file.flush();
-//		int tmp = this.predNames.size() / 2;
-//		for (int i = 0; i < tmp; i++) {
-//			String str = "\n(assert (! " + this.predNames.get(i) + " :named lbl_" + this.predNames.get(i) + "))\n\n";
-//			file.write(str);
-//			file.flush();
-//		}		
-//		for (int i = tmp; i < this.predNames.size(); i++) {
-//			String str = "\n(assert (! p_" + this.predNames.get(i - tmp) + " :named lbl_p_" + this.predNames.get(i - tmp) + "))\n\n";
-//			file.write(str);
-//			file.flush();
-//		}
+		//		this.printNextInvToFile(file);
+		//		file.flush(); 
+		//		file.write("(check-sat)\n");
+		//		file.flush();
+		//		int tmp = this.predNames.size() / 2;
+		//		for (int i = 0; i < tmp; i++) {
+		//			String str = "\n(assert (! " + this.predNames.get(i) + " :named lbl_" + this.predNames.get(i) + "))\n\n";
+		//			file.write(str);
+		//			file.flush();
+		//		}		
+		//		for (int i = tmp; i < this.predNames.size(); i++) {
+		//			String str = "\n(assert (! p_" + this.predNames.get(i - tmp) + " :named lbl_p_" + this.predNames.get(i - tmp) + "))\n\n";
+		//			file.write(str);
+		//			file.flush();
+		//		}
 		file.close();
 	}
-	
+
 	private final void printRefinedthPredidatesToFile() throws IOException {
 		String fileName = this.dir + "next_predicates_" + this.specFile + ".txt";
 		this.files.add(fileName);
 		FileWriter file = new FileWriter(fileName);
-//		file.write("(set-option :produce-unsat-cores true)");
+		//		file.write("(set-option :produce-unsat-cores true)");
 		file.flush();
 		file.write(this.z3SortDeclarations);
 		file.flush();
@@ -3196,9 +3205,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		file.close();
 	}
 
-	
+
 	private final void printZ3Spec() throws IOException {		
-//		this.dir = System.getProperty("user.dir" + "\\");
+		//		this.dir = System.getProperty("user.dir" + "\\");
 		this.printRawZ3SpecToFile();
 		this.printRawZ3SpecToStdout();
 		this.printRefinedZ3SpecToFile();
@@ -3210,7 +3219,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.printRefinedNextToFile();
 		this.printRefinedthPredidatesToFile();
 	}
-	
+
 	private final void makeIsAFcn() {
 		int alen = this.varList.length;
 		int count = 0, i;
@@ -3260,7 +3269,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.z3StrIsAFcn = "; IsAFcn\n" + this.z3Tool.makeAssertion(this.z3StrIsAFcn);			
 		}			
 	}
-			
+
 	private final void makeExtensionality() {
 		int alen = this.varList.length;
 		String tmpStr;
@@ -3290,7 +3299,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.z3Extensionality = res1;
 		}
 	}
-	
+
 	private final Z3Node getZ3FormalParamNode(Z3Node node) {
 		Z3Node res = node;
 		String name = res.name;
@@ -3302,7 +3311,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return res;
 	}
-	
+
 	public final void addSort(Z3Node newSort) {
 		if (newSort.name.equals(NoName)) {
 			return;
@@ -3320,7 +3329,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.sortList.add(newSort);
 		}
 	}
-		
+
 	public final Z3Node getSort(int index) {
 		if (index < 0 || index >= this.sortList.size()) {
 			return null;
@@ -3329,7 +3338,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return this.sortList.get(index);
 		}
 	}
-	
+
 	public final Z3Node getSort(String name) {
 		if (name.equals(NoName)) {
 			return null;
@@ -3342,7 +3351,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return null;
 	}
-	
+
 	public final Z3Node getSort(Z3Node node) {
 		String name = node.name;
 		if (name.equals("NoName")) {
@@ -3371,39 +3380,39 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}
 		}
 		else {
-//			switch (name) {
-//			case Bool: {
-//				return this.sortList.get(BoolIndex);		
-//			}
-//			case SetBool: {
-//				return this.sortList.get(SetBoolIndex);
-//			}
-//			case Int: {
-//				return this.sortList.get(IntIndex);			
-//			}
-//			case SetInt: {
-//				return this.sortList.get(SetIntIndex);
-//			}
-//			case Str: {
-//				return this.sortList.get(StrIndex);
-//			}
-//			case SetStr: {
-//				return this.sortList.get(SetStrIndex);
-//			}
-//			case U: {
-//				return this.sortList.get(UIndex);
-//			}
-//			default: {
-//				int alen = this.sortList.size();
-//				for (int i = alen - 1; i >= 0; i--) {
-//					Z3Node sort = this.sortList.get(i);
-//					if (node.name.equals(sort.name)) {
-//						return sort;
-//					}
-//				}
-//				Assert.fail(NoSortErr, "No existing sort" + name);			
-//			}
-//			}
+			//			switch (name) {
+			//			case Bool: {
+			//				return this.sortList.get(BoolIndex);		
+			//			}
+			//			case SetBool: {
+			//				return this.sortList.get(SetBoolIndex);
+			//			}
+			//			case Int: {
+			//				return this.sortList.get(IntIndex);			
+			//			}
+			//			case SetInt: {
+			//				return this.sortList.get(SetIntIndex);
+			//			}
+			//			case Str: {
+			//				return this.sortList.get(StrIndex);
+			//			}
+			//			case SetStr: {
+			//				return this.sortList.get(SetStrIndex);
+			//			}
+			//			case U: {
+			//				return this.sortList.get(UIndex);
+			//			}
+			//			default: {
+			//				int alen = this.sortList.size();
+			//				for (int i = alen - 1; i >= 0; i--) {
+			//					Z3Node sort = this.sortList.get(i);
+			//					if (node.name.equals(sort.name)) {
+			//						return sort;
+			//					}
+			//				}
+			//				Assert.fail(NoSortErr, "No existing sort" + name);			
+			//			}
+			//			}
 			if (name.equals(Bool)) {
 				return this.sortList.get(BoolIndex);		
 			}
@@ -3435,18 +3444,18 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 				}
 				Assert.fail(NoSortErr, "No existing sort" + name);			
 			}
-			
+
 		}
 		return null;
 	}		
-	
+
 	public final Z3Node getSort_ssort_elem(Z3Node elemSort) {
 		int alen = this.sortList.size();										
 		Z3Node sort = null;
 		for (int i = alen - 1; i >= 0; i--) {
 			sort = this.sortList.get(i);
 			if ((sort.opCode == OPCODE_ssort  || sort.opCode == OPCODE_sfsort ||
-					 sort.opCode == OPCODE_srsort || sort.opCode == OPCODE_stsort) &&
+					sort.opCode == OPCODE_srsort || sort.opCode == OPCODE_stsort) &&
 					sort.getElemSort().name.equals(elemSort.name)) {
 				return sort;
 			}
@@ -3465,9 +3474,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return this.z3Tool.createSetSort(elemSort, OPCODE_ssort);
 		}
 		}
-		
+
 	}
-	
+
 	public final Z3Node getSort_fc(Z3Node node) {
 		if (node.opCode != OPCODE_fc) {
 			Assert.fail(OPCODEErr, "Get FSORT of a node whose OPCODE is not _fc.");
@@ -3489,7 +3498,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_fc(node);
 	}
-	
+
 	// node.opCode == OPCODE_sof
 	public final Z3Node getSort_fsort_sof(Z3Node node) {
 		if (node.opCode != OPCODE_sof) {
@@ -3512,7 +3521,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_fsort_sof(node);
 	}
-	
+
 	public final Z3Node getSort_sof(Z3Node node) {
 		if (node.opCode != OPCODE_sof) {
 			Assert.fail(OPCODEErr, "Get SFSORT of a node whose OPCODE is not _sof.");
@@ -3535,7 +3544,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_sof(node);
 	}
-	
+
 	public final Z3Node getSort_tup(Z3Node node) {
 		if (node.opCode != OPCODE_tup) {
 			Assert.fail(OPCODEErr, "Get TSORT of a node whose OPCODE is not _tup.");
@@ -3563,7 +3572,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_tup(node);
 	}
-	
+
 	public final Z3Node getSort_tsort_cp(Z3Node node) {
 		if (node.opCode != OPCODE_cp) {
 			Assert.fail(OPCODEErr, "Get TSORT from a node whose OPCODE is not _cp.");
@@ -3590,7 +3599,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_tsort_cp(node);
 	}
-	
+
 	public final Z3Node getSort_cp(Z3Node node) {
 		if (node.opCode != OPCODE_cp) {
 			Assert.fail(OPCODEErr, "Get STSORT of a node whose OPCODE is not _cp.");
@@ -3617,7 +3626,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_cp(node);
 	}
-	
+
 	public final Z3Node getSort_rc(Z3Node node) {
 		if (node.opCode != OPCODE_rc) {
 			Assert.fail(OPCODEErr, "Get RSORT of a node whose OPCODE is not _rc.");
@@ -3646,7 +3655,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_rc(node);
 	}
-	
+
 	public final Z3Node getSort_rsort_sor(Z3Node node) {
 		if (node.opCode != OPCODE_sor) {
 			Assert.fail(OPCODEErr, "Get RSORT from a node whose OPCODE is not _sor.");
@@ -3675,7 +3684,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_rsort_sor(node);
 	}
-	
+
 	public final Z3Node getSort_sor(Z3Node node) {
 		if (node.opCode != OPCODE_sor) {
 			Assert.fail(OPCODEErr, "Get SRSORT of a node whose OPCODE is not _spr.");
@@ -3705,7 +3714,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return this.z3Tool.createSort_sor(node);
 	}
-	
+
 	private final Z3Node rewriteInv(Z3Node node) {
 		Z3Node res = node;
 		if (res.getOperandSize() == 0) {
@@ -3716,7 +3725,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return res;
 	}
-		
+
 	private void translateInvariant() {
 		this.taskID = invTask;
 		Action[] inv = this.tool.getInvariants();		
@@ -3741,7 +3750,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}
 		}
 	}
-	
+
 	public void addFreshVar(Z3Node var) {
 		int alen = this.freshVars.size();
 		Z3Node var1;
@@ -3753,7 +3762,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		this.freshVars.add(var);
 	}
-	
+
 	public final int getLazyValueIndex(Z3Node node) {
 		int alen = this.lazyValues.size();
 		for (int i = 0; i < alen; i++) {
@@ -3763,19 +3772,19 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}
 		return -1;
 	}
-	
+
 	public final Z3Node getLazyValue(int index) {
 		return this.lazyValues.get(index);
 	}
-	
+
 	public final void addFreshAssertion(Z3Node assertion) {
 		this.freshVarAssertions.add(assertion);
 	}
-	
+
 	public final void addLazyValue(Z3Node val) {
 		this.lazyValues.add(val);
 	}
-	
+
 	private final void addInvs(ArrayList<Z3Node> list, Z3Node inv) {
 		if (inv.opCode == OPCODE_land) {
 			int alen = inv.getOperandSize();
@@ -3787,7 +3796,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			list.add(inv);
 		}
 	}
-	
+
 	private final void translateInv() {
 		this.taskID = invTask;
 		Action[] inv = this.tool.getInvariants();		
@@ -3824,31 +3833,31 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}
 		}
 	}
-	
+
 	public ArrayList<Z3Node> getSortList() {
 		return this.sortList;
 	}
-	
+
 	public Z3Node[] getVarList() {
 		return this.varList;
 	}
-	
+
 	public ArrayList<Z3Node> getFreshVarList() {
 		return this.freshVars;
 	}
-	
+
 	public ArrayList<Z3Node> getAxioms() {
 		return this.axioms;
 	}
-	
+
 	public void addAxiom(Z3Node node) {
 		this.axioms.add(node);
 	}
-	
+
 	public ArrayList<String> getFileNames() {
 		return this.files;
 	}
-	
+
 	private final void getPreds() {
 		this.taskID = predTask;
 		Action[] inv = this.tool.getInvariants();		
@@ -3864,7 +3873,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}			
 		}
 	}
-	
+
 	private final void simplifyPreds() {
 		int alen = this.preds.size();
 		for (int i = 0; i < alen; i++) {
@@ -3875,7 +3884,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.preds.set(i, pred);
 		}		
 	}
-	
+
 	// for NuSMV
 	private final void createNextPreds() {
 		int alen = this.preds.size();
@@ -3892,7 +3901,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.predNames.add(name);
 		}
 	}
-	
+
 	private final void createNegPreds() {
 		int alen = this.preds.size();
 		for (int i = 0; i < alen; i++) {
@@ -3903,7 +3912,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.negPreds.add(negPred);
 		}
 	}
-	
+
 	private final void createPredAssertions() {
 		int alen = this.preds.size();
 		for (int i = 0; i < alen; i++) {
@@ -3915,7 +3924,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			this.negPreds.set(i, expr1);
 		}
 	}
-	
+
 	private final void translatePredicates() {
 		this.getPreds();
 		this.simplifyPreds();
@@ -3923,7 +3932,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		this.createNegPreds();
 		this.createPredAssertions();
 	}
-	
+
 	public String printNUSMV(Z3Node node) {
 		String res = "";
 		if (node != null) {
@@ -3984,7 +3993,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 		}		
 		return res;
 	}
-	
+
 	private void translatePredInv() {
 		this.taskID = predInvTask;
 		Action[] inv = this.tool.getInvariants();		
@@ -4011,31 +4020,31 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			}
 		}
 	}
-	
+
 	public ArrayList<Z3Node> getPredicates() {
 		return this.preds;
 	}
-	
+
 	public ArrayList<Z3Node> getNegPredicates() {
 		return this.negPreds;
 	}
-	
+
 	public ArrayList<String> getPredNames() {
 		return this.predNames;
 	}
-	
+
 	public String getInitFileName() {
 		return this.dir + "init_" + this.specFile + ".txt";
 	}
-	
+
 	public String getNextFileName() {
 		return this.dir + "next_" + this.specFile + ".txt";
 	}
-	
+
 	public ArrayList<Z3Node> getStringList() {
 		return this.stringList;
 	}
-	
+
 	public String getDir() {
 		if (this.dir != null || !this.dir.equals(NoName)) {
 			return this.dir;
@@ -4044,11 +4053,11 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants {
 			return "";
 		}
 	}
-	
+
 	public String getSpecFileName() {
 		return this.specFile;
 	}
-	
+
 	public String getNuSMVInv() {
 		return this.nusmvInv;
 	}

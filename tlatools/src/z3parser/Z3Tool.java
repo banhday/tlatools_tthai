@@ -4,7 +4,7 @@ package z3parser;
 import util.Assert;
 import java.util.ArrayList;
 
-public class Z3Tool implements Z3Constants {
+public class Z3Tool implements Z3Constants, Z3ErrorCode {
 	private Z3Encoder z3Encoder;	
 	private int taskID;
 	private ConstraintChecker checker;

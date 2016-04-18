@@ -78,17 +78,8 @@ public interface Z3Constants extends ToolGlobals {
 	public final int invTask		= nextTask + 1;
 	public final int predTask		= invTask + 1;
 	public final int predInvTask	= predTask + 1;
-	
-	public final int NoSortErr	 	= predInvTask + 1;
-	public final int DiffSortErr 	= NoSortErr + 1;
-	public final int NoNameErr 		= DiffSortErr + 1;
-	public final int NoIdErr 		= NoNameErr + 1;
-	public final int NotBoolErr 	= NoIdErr + 1;
-	public final int OPCODEErr		= NotBoolErr + 1;
-	public final int ConstraintErr  = OPCODEErr + 1;
-	public final int Z3Err			= ConstraintErr + 1;
-	
-	public final int OPCODE_add		= Z3Err + 1;
+		
+	public final int OPCODE_add		= predInvTask + 1;
 	public final int OPCODE_mul		= OPCODE_add + 1;
 	public final int OPCODE_sub		= OPCODE_mul + 1;
 	public final int OPCODE_div		= OPCODE_sub + 1;
@@ -113,5 +104,5 @@ public interface Z3Constants extends ToolGlobals {
 	
 	public final String spaces8 	= "        ";	
 	public final String spaces5		= "     ";
-	public final String spaces4		= "    ";
+	public final String spaces4		= "    ";	
 }

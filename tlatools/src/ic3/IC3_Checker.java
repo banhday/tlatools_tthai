@@ -8,10 +8,10 @@ import util.Assert;
 import z3parser.Z3Constants;
 import z3parser.Z3Encoder;
 import z3parser.Z3Node;
-
+import z3parser.Z3ErrorCode;
 import com.microsoft.z3.*;
 
-public class IC3_Checker implements Z3Constants {
+public class IC3_Checker implements Z3Constants, Z3ErrorCode {
 	private Z3Encoder z3Encoder;	
 	private ArrayList<Z3SortSymbol> sorts;	
 	private ArrayList<Z3FuncSymbol> fcns;
@@ -710,11 +710,10 @@ public class IC3_Checker implements Z3Constants {
 
 		this.next_solver.push();
 		this.next_solver.add(F.formula);
-		//this.next_solver.add(this.ctx.mkAnd(q.shifted_preds));
-		this.next_solver.add(this.ctx.mkNot(this.ctx.mkAnd(q.preds)));
 		Status status = this.next_solver.check(q.shifted_preds);
-		if (status != Status.UNSATISFIABLE) {
-			Assert.fail(Z3Err, "Z3 cannot find an unsat core.");
+		if (status == Status.SATISFIABLE) {
+			this.next_solver.pop();
+			return q.shifted_preds;
 		}
 		BoolExpr[] res = this.next_solver.getUnsatCore();
 		if (res.length == 0) {

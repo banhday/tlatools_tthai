@@ -2,7 +2,7 @@ package z3parser;
 
 import util.Assert;
 
-public class ConstraintChecker implements Z3Constants {
+public class ConstraintChecker implements Z3Constants, Z3ErrorCode {
 	private Z3Encoder z3encoder;
 	
 	private ConstraintChecker() { }
