@@ -11,7 +11,7 @@ import z3parser.Z3Node;
 import z3parser.Z3ErrorCode;
 import com.microsoft.z3.*;
 
-public class IC3_Checker implements Z3Constants, Z3ErrorCode {
+public class IC3_Checker implements Z3Constants, Z3ErrorCode, IC3_ErrorCode {
 	private Z3Encoder z3Encoder;	
 	private ArrayList<Z3SortSymbol> sorts;	
 	private ArrayList<Z3FuncSymbol> fcns;
@@ -279,7 +279,6 @@ public class IC3_Checker implements Z3Constants, Z3ErrorCode {
 						this.z3Encoder.raw_next_inv, tla_atom, NoSet);
 		String strInv = this.z3Encoder.z3Tool.printZ3Node(node1, ""),
 				strPInv = this.z3Encoder.z3Tool.printZ3Node(node2, "");
-
 		this.cur_inv = this.ctx.parseSMTLIB2String(strInv, this.t_sortNames, this.t_sorts, this.t_declNames, this.t_decls);
 		this.next_inv = this.ctx.parseSMTLIB2String(strPInv, this.t_sortNames, this.t_sorts, this.t_declNames, this.t_decls);
 	}

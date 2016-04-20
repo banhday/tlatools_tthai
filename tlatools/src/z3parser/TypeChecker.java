@@ -64,7 +64,8 @@ public class TypeChecker implements Z3Constants, Z3ErrorCode {
 		}
 		int alen = rcd.getFieldSize();
 		for (int i = 0; i < alen; i++) {
-			if (field.name.equals("z3f_" + rcd.getField(i).name)) {
+			if ((field.name.equals(rcd.getField(i).name) && beforeTranslation) ||
+					(field.name.equals("z3f_" + rcd.getField(i).name) && !beforeTranslation)) {
 				if (!this.compareSort(node.getSort(), rcd.getRange(i).getSort())) {
 					Assert.fail(RSErr, "Type inconsistence in record selection with " + rcd.name + " " + field.name);
 				}
@@ -265,7 +266,7 @@ public class TypeChecker implements Z3Constants, Z3ErrorCode {
 			}
 		}
 		else {
-			if (!this.compareSort(x.getSort(), S.getSort())) {
+			if (!this.compareSort(x.getSort(), S.getSort())) {				
 				Assert.fail(DomQuanErr, "The domain of " + node.name + " is not consistent.");
 			}	
 		}
@@ -483,7 +484,7 @@ public class TypeChecker implements Z3Constants, Z3ErrorCode {
 			for (int j = 0; j < fieldSize; j++) {
 				if (field.name.equals(sort.getField(j).name)) {
 					noRange = false;
-					if (!this.compareSort(S.getSort(), sort.getRange(j).getSort())) {
+					if (!this.compareSort(S.getSort().getElemSort(), sort.getRange(j).getSort())) {
 						Assert.fail(SorErr3, "Field " + field.name + "with a type conflict.");
 					}
 					break;

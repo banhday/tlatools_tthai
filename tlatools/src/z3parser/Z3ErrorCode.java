@@ -1,7 +1,7 @@
 package z3parser;
 
 public interface Z3ErrorCode {
-	public final int NoSortErr	 	= 1;
+	public final int NoSortErr	 	= 6001;
 	public final int DiffSortErr 	= NoSortErr + 1;
 	public final int NoNameErr 		= DiffSortErr + 1;
 	public final int NoIdErr 		= NoNameErr + 1;
@@ -22,7 +22,7 @@ public interface Z3ErrorCode {
 	public final int CaseErr		= DomQuanErr + 1;
 	public final int CPErr			= CaseErr + 1;
 	public final int TransErr		= CPErr + 1;
-	public final int ITEConErr		= CPErr + 1;
+	public final int ITEConErr		= TransErr + 1;
 	public final int ITEActErr		= ITEConErr + 1;
 	public final int RcdFieldErr	= ITEActErr + 1;
 	public final int RSErr			= RcdFieldErr + 1;
@@ -63,4 +63,6 @@ public interface Z3ErrorCode {
 	public final int SsoErr3		= SsoErr2 + 1;
 	public final int TupErr1		= SsoErr3 + 1;
 	public final int TupErr2		= TupErr1 + 1;
+	
+	public final int invNullErr 	= TupErr2 + 1;
 }

@@ -537,7 +537,7 @@ public class Z3Tool implements Z3Constants, Z3ErrorCode {
 //		}				
 		Z3Node newBody = new Z3Node("=>", OPCODE_implies, this.z3Encoder.boolSort, null, eCon, p, tla_atom, NoSet);
 		result.addBoundedVar(x);
-		result.addDomain(sortX);
+		result.addDomain(S);
 //		newBody = this.rewrite(newBody);
 		result.addExpr(newBody);
 		result = this.rewrite(result);
@@ -801,9 +801,15 @@ public class Z3Tool implements Z3Constants, Z3ErrorCode {
 			result.setDomain(0, sort);
 		}
 		else {
-			Z3Node body = result.getExpr(0);
+			Z3Node elemSort = set.getSort().getElemSort(),
+					setSort = set.getSort(),
+				xSort = node.getBoundedVar(0).getSort(),
+				body = result.getExpr(0);
 			body = this.rewrite(body);
-			result.setExpr(0, body);
+			if (xSort != setSort && !xSort.name.equals(setSort.name)) {
+				result.setDomain(0, elemSort);	
+			}			
+			result.setExpr(0, body);			
 		}
 		return result;
 	}
@@ -1075,7 +1081,7 @@ public class Z3Tool implements Z3Constants, Z3ErrorCode {
 	private final Z3Node rewrite_eq_ept(Z3Node node) {
 		Z3Node S = node.getOperand(0),
 			sort = S.getSort(),
-			emptySet = new Z3Node("empty_" + sort.name, OPCODE_se, sort, null, tla_set, 1),
+			emptySet = new Z3Node("empty_" + sort.name, OPCODE_se, sort, null, tla_set, sort.setLevel),
 			res = new Z3Node("=", OPCODE_eq, this.z3Encoder.boolSort, null, S, emptySet, tla_atom, 0);		
 		return res;
 	}

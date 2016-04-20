@@ -377,7 +377,7 @@ public class Z3Node implements ToolGlobals, Z3Constants, Z3ErrorCode {
 		this.operands.add(node);
 	}
 	public Z3Node getOperand(int i) {
-		return this.operands.get(i);
+ 		return this.operands.get(i);
 	}
 	
 	public void removeOperand(int i) {

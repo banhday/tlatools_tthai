@@ -16,6 +16,8 @@ import util.DebugPrinter;
 import util.Set;
 import util.ToolIO;
 
+import z3parser.Z3ErrorCode;
+
 /**
  * This class is used in the following way to support the replacements of the
  * strings inside of the code. Any kind of String used as a message reported to the user should be replaced with
@@ -1001,6 +1003,260 @@ public class MP
         /* 
          *  no information at all (error code wrong) 
          */
+//        case Z3ErrorCode.NoSortErr:
+//        	b.append("No appropriate sort");
+//        	break;        
+//        case Z3ErrorCode.DiffSortErr:
+//        	b.append("DiffSortErr");
+//        	break;
+//        case Z3ErrorCode.NoNameErr:
+//        	b.append("A node without name");
+//        	break;
+//        case Z3ErrorCode.NoIdErr:
+//        	b.append("A node without id");
+//        	break;
+//        case Z3ErrorCode.NotBoolErr:
+//        	b.append("A node with an expected type Bool is not a Boolean expression");
+//        	break;
+//        case Z3ErrorCode.OPCODEErr:
+//        	b.append("A node with a conflict in OPCODE");
+//        	break;
+//        case Z3ErrorCode.ConstraintErr:
+//        	b.append("A constraint is violated");
+//        	break;
+//        case Z3ErrorCode.Z3Err:
+//        	b.append("Z3 cannot solve a problem");
+//        	break;
+//        case Z3ErrorCode.NoElemSortErr:
+//        	b.append("No element sort for a set");
+//        	break;
+//        case Z3ErrorCode.IsAFcnErr:
+//        	b.append("Cannot rewrite IsAFcn");        	
+//        	break;
+//        case Z3ErrorCode.DomArgErr:
+//        	b.append("A type conflict between a domain of a function and an argument");
+//        	break;
+//        case Z3ErrorCode.CodErr:
+//        	b.append("A type conflict between a codomain of a function and an argument");
+//        	break;
+//        case Z3ErrorCode.AssertErr:
+//        	b.append("An argument of an assertion is not a Boolean expression");
+//        	break;
+//        case Z3ErrorCode.NotEqualErr:
+//        	b.append("Two sides of unequality have different sorts");
+//        	break;
+//        case Z3ErrorCode.IntOpErr:
+//        	b.append("Wrong type, it should be Int");
+//        	break;
+//        case Z3ErrorCode.BoolOpErr:
+//        	b.append("Wrong type, it should be Bool");
+//        	break;
+//        case Z3ErrorCode.BodyBoolErr:
+//        	b.append("Wrong type, a body should have type Bool");
+//        	break;
+//        case Z3ErrorCode.DomQuanErr:
+//        	b.append("The domain of a quantified formula has a wrong type");
+//        	break;
+//        case Z3ErrorCode.CaseErr:
+//        	b.append("Cannot rewrite the operator Case");
+//        	break;
+//        case Z3ErrorCode.CPErr:
+//        	b.append("One argument of Cartesian product is not a set with type info");
+//        	break;
+//        case Z3ErrorCode.TransErr:
+//        	b.append("Forget to check a node with opCode ");
+//        	break;
+//        case Z3ErrorCode.ITEConErr:
+//        	b.append("The condition of ite is not a Boolean expression.");
+//        	break;
+//        case Z3ErrorCode.ITEActErr:
+//        	b.append("The actions of ite have different sorts.");
+//        	break;
+//        case Z3ErrorCode.RcdFieldErr:
+//        	b.append("Cannot apply the record selection since one of its fields is not a string");
+//        	break;
+//        case Z3ErrorCode.RSErr:
+//        	b.append("Type inconsistence in record selection");
+//        	break;
+//        case Z3ErrorCode.NoFieldErr:
+//        	b.append("No corresponding field");
+//        	break;
+//        case Z3ErrorCode.DomRcddErr:
+//        	b.append("The domain of of a record is not a set of strings");
+//        	break;
+//        case Z3ErrorCode.DomTupdErr:
+//        	b.append("The domain of of a record is not a set of integers");
+//        	break;
+//        case Z3ErrorCode.DomFcnErr:
+//        	b.append("The domain of of a function does not have a right type");
+//        	break;
+//        case Z3ErrorCode.EqBoolErr:
+//        	b.append("The equation is not a Boolean expression");
+//        	break;
+//        case Z3ErrorCode.EqErr:
+//        	b.append("Two sides of an equation have different sorts");
+//        	break;
+//        case Z3ErrorCode.InBoolErr:
+//        	b.append("The operator in does not have a type Bool");
+//        	break;
+//        case Z3ErrorCode.InErr:
+//        	b.append("A type conflict between two sides of the operator in");
+//        	break;
+//        case Z3ErrorCode.FcnErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.RcdAppErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.ExcErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.ExcErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.ExcErr3:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.ExcErr4:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.FcErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.FcErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.FcErr3:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.RcErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.RcErr2:
+//        	b.append();
+//        	break;        	
+//        case Z3ErrorCode.RcErr3:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SetOpErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SubsetErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SetOpBoolErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.UnionErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SeErr:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SoaErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SoaErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SofErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SofErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SorErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SorErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SorErr3:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SsoErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SsoErr2:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.SsoErr3:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.TupErr1:
+//        	b.append();
+//        	break;
+//        case Z3ErrorCode.TupErr2:
+//        	b.append();
+//        	break;	
+//        case Z3ErrorCode.invNullErr:
+//        	b.append("No invariant to check");
+//        	break;
+        case Z3ErrorCode.NoSortErr:
+    	case Z3ErrorCode.DiffSortErr:
+    	case Z3ErrorCode.NoNameErr:
+    	case Z3ErrorCode.NoIdErr:
+    	case Z3ErrorCode.NotBoolErr:
+    	case Z3ErrorCode.OPCODEErr:
+    	case Z3ErrorCode.ConstraintErr:
+    	case Z3ErrorCode.Z3Err:
+    	case Z3ErrorCode.NoElemSortErr:
+    	case Z3ErrorCode.IsAFcnErr:
+    	case Z3ErrorCode.DomArgErr:
+    	case Z3ErrorCode.CodErr:
+    	case Z3ErrorCode.AssertErr:
+    	case Z3ErrorCode.NotEqualErr:
+    	case Z3ErrorCode.IntOpErr:
+    	case Z3ErrorCode.BoolOpErr:
+    	case Z3ErrorCode.BodyBoolErr:
+    	case Z3ErrorCode.DomQuanErr:
+    	case Z3ErrorCode.CaseErr:
+    	case Z3ErrorCode.CPErr:
+    	case Z3ErrorCode.TransErr:
+    	case Z3ErrorCode.ITEConErr:
+    	case Z3ErrorCode.ITEActErr:
+    	case Z3ErrorCode.RcdFieldErr:
+    	case Z3ErrorCode.RSErr:
+    	case Z3ErrorCode.NoFieldErr:
+    	case Z3ErrorCode.DomRcddErr:
+    	case Z3ErrorCode.DomTupdErr:
+    	case Z3ErrorCode.DomFcnErr:
+    	case Z3ErrorCode.EqBoolErr:
+    	case Z3ErrorCode.EqErr:
+    	case Z3ErrorCode.InBoolErr:
+    	case Z3ErrorCode.InErr:
+    	case Z3ErrorCode.FcnErr:
+    	case Z3ErrorCode.RcdAppErr:
+    	case Z3ErrorCode.ExcErr1:
+    	case Z3ErrorCode.ExcErr2:
+    	case Z3ErrorCode.ExcErr3:
+    	case Z3ErrorCode.ExcErr4:
+    	case Z3ErrorCode.FcErr1:
+    	case Z3ErrorCode.FcErr2:
+    	case Z3ErrorCode.FcErr3:
+    	case Z3ErrorCode.RcErr1:
+    	case Z3ErrorCode.RcErr2:
+    	case Z3ErrorCode.RcErr3:
+    	case Z3ErrorCode.SetOpErr:
+    	case Z3ErrorCode.SubsetErr:
+    	case Z3ErrorCode.SetOpBoolErr:
+    	case Z3ErrorCode.UnionErr:
+    	case Z3ErrorCode.SeErr:
+    	case Z3ErrorCode.SoaErr1:
+    	case Z3ErrorCode.SoaErr2:
+    	case Z3ErrorCode.SofErr1:
+    	case Z3ErrorCode.SofErr2:
+    	case Z3ErrorCode.SorErr1:
+    	case Z3ErrorCode.SorErr2:
+    	case Z3ErrorCode.SorErr3:
+    	case Z3ErrorCode.SsoErr1:
+    	case Z3ErrorCode.SsoErr2:
+    	case Z3ErrorCode.SsoErr3:
+    	case Z3ErrorCode.TupErr1:
+    	case Z3ErrorCode.TupErr2:	
+    	case Z3ErrorCode.invNullErr:
+    		b.append(parameters[0]);
+    		break;
         default:
             b.append("Wrong invocation of TLC error printer. Error code not found.");
             break;

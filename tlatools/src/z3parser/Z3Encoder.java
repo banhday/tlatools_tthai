@@ -264,7 +264,7 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3Er
 		return this.lookup(cur.getNext(), var);
 	}
 
-	public final Object lookup(SymbolNode opNode, Context c, boolean cutoff)
+	private final Object lookup(SymbolNode opNode, Context c, boolean cutoff)
 	{
 		// Only for params of actions
 		boolean isVarDecl = (opNode.getKind() == VariableDeclKind);
@@ -4000,11 +4000,13 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3Er
 		int alen = inv.length;
 		String name = "";		
 		Z3Node rhs = null, p_rhs = null;
+		boolean noInv = true;
 		for (int j = 0; j < alen; j++) {
 			OpApplNode node = (OpApplNode) inv[j].pred;
 			OpDefNode node1 = (OpDefNode) node.getOperator();
 			name = node1.getName().toString();
 			if (name.equals("Inv_ToCheck")) {
+				noInv = false;
 				rhs = this.eval(inv[j].pred, inv[j].con, EvalControl.Clear);
 				this.z3Tool.setTaskID(predInvTask);
 				rhs = this.z3Tool.rewrite(rhs, true);
@@ -4018,6 +4020,9 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3Er
 				this.raw_init_inv = rhs;
 				this.raw_next_inv = p_rhs;
 			}
+		}
+		if (noInv) {			
+			Assert.fail(invNullErr, "No Invariant to check.");						
 		}
 	}
 

@@ -6,6 +6,7 @@ package util;
 
 import tlc2.output.EC;
 import tlc2.output.MP;
+import z3parser.Z3ErrorCode;
 
 /**
  * A toolkit for checking conditions and throwing unchecked exceptions if they are not met.
