@@ -589,6 +589,29 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3Er
 		}		
 		return res;
 	}
+	
+	private final Z3Node removeAndFromTypeOK(Z3Node node) {
+		boolean notStop = false;		
+		do {
+			notStop = false;
+			int i = node.getOperandSize() - 1;
+			while (i >= 0) {
+				Z3Node op = node.getOperand(i);
+				if (op.opCode == OPCODE_land ) {
+					notStop = true;
+					int alen = op.getOperandSize();
+					for (int j = 0; j < alen; j++) {
+						Z3Node op1 = op.getOperand(j);
+						node.addOperand(op1);		
+					}
+					node.removeOperand(i);
+				}				
+				i--;
+			}
+		}
+		while (notStop);
+		return node;
+	}
 
 	private final void translateTypeOK() {
 		this.taskID = typeOKTask;
@@ -602,12 +625,13 @@ public class Z3Encoder implements ValueConstants, ToolGlobals, Z3Constants, Z3Er
 			name = node1.getName().toString();
 			if (name.equals("TypeOK")) {
 				rhs = this.typeReconstructor.eval(inv[j].pred, inv[j].con, EvalControl.Clear);
+				rhs = this.removeAndFromTypeOK(rhs);
 				if (rhs.opCode == OPCODE_cl || rhs.opCode == OPCODE_land) {
 					this.getPrimitiveTypeInfo(rhs);
 					//					rhs = this.bindZ3Node(rhs, true);
 					//					rhs = this.createTypeOK_PrimedVars(rhs);
 					this.createTypeInfo_PrimedVars(rhs);
-					this.z3Tool.setTaskID(typeOKTask);
+					this.z3Tool.setTaskID(typeOKTask);					
 					this.typeChecker.checkBeforeTranslation(rhs);
 					rhs = this.rewriter.rewrite(rhs, true);
 					rhs = this.rewriteTypeOK(rhs);

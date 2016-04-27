@@ -294,8 +294,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 						// I guess I need to translate this node if MethodValue is Int, 
 						// or Boolean.
 						node.name = ((MethodValue) val).md.getName();						
-						if (node.name.equals("Nat") || node.name.equals("Int")) {							
+						if (node.name.equals("Int")) {							
 							node = this.encoder.setIntSort;
+						}
+						else if (node.name.equals("Nat")) {
+							node = this.encoder.setIntSort.clone();
+							node.name = "Nat";
 						}
 						else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {							
 							node = this.encoder.setBoolSort;
@@ -417,8 +421,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					else {
 						node.name = expr.getOperator().getName().toString();
 					}
-					if (node.name.equals("Nat") || node.name.equals("Int")) {
+					if (node.name.equals("Int")) {							
 						node = this.encoder.setIntSort;
+					}
+					else if (node.name.equals("Nat")) {
+						node = this.encoder.setIntSort.clone();
+						node.name = "Nat";
 					}						
 					else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {
 						node = this.encoder.setBoolSort;
@@ -912,8 +920,18 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 			Z3Node x = this.eval(args[0], c, control),
 					S = this.eval(args[1], c, control);								
 			node.addOperand(x);
-			node.addOperand(S);						
-			this.in_check(node);			
+			node.addOperand(S);				
+			if (S.name.equals("Nat")) {
+				Z3Node zero = new Z3Node("0", OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet),						
+						geq0 = new Z3Node(">=", OPCODE_ge, this.encoder.boolSort, null, x, zero, tla_atom, NoSet),
+						intNode = new Z3Node(NoName, OPCODE_in, this.encoder.boolSort, null, x, this.encoder.setIntSort, tla_atom, NoSet),
+						newNode = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, geq0, intNode, tla_atom, NoSet);
+				this.in_check(intNode);
+				node = newNode;
+			}
+			else {
+				this.in_check(node);
+			}
 			return node;
 		}
 		case OPCODE_notin: {					
@@ -1131,8 +1149,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					// I guess I need to translate this node if MethodValue is Int, 
 					// or Boolean.					
 					node.name = ((MethodValue) val).md.getName();						
-					if (node.name.equals("Nat") || node.name.equals("Int")) {
-						node = this.encoder.setIntSort;							
+					if (node.name.equals("Int")) {							
+						node = this.encoder.setIntSort;
+					}
+					else if (node.name.equals("Nat")) {
+						node = this.encoder.setIntSort.clone();
+						node.name = "Nat";
 					}
 					else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {
 						node = this.encoder.setBoolSort;							
@@ -1242,8 +1264,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 				// Maybe it is unnecessary or only evalAppl needs it.
 				if (node.name.equals(NoName)) {					
 					node.name = pred.getOperator().getName().toString();
-					if (node.name.equals("Nat") || node.name.equals("Int")) {
+					if (node.name.equals("Int")) {							
 						node = this.encoder.setIntSort;
+					}
+					else if (node.name.equals("Nat")) {
+						node = this.encoder.setIntSort.clone();
+						node.name = "Nat";
 					}						
 					else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {
 						node = this.encoder.setBoolSort;
@@ -1518,7 +1544,17 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 				rhs = this.eval(args[1], c, EvalControl.Clear);				
 				node.addOperand(lhs);
 				node.addOperand(rhs);
-				this.in_check(node);			
+				if (rhs.name.equals("Nat")) {
+					Z3Node zero = new Z3Node("0", OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet),						
+							geq0 = new Z3Node(">=", OPCODE_ge, this.encoder.boolSort, null, lhs, zero, tla_atom, NoSet),
+							intNode = new Z3Node(NoName, OPCODE_in, this.encoder.boolSort, null, lhs, this.encoder.setIntSort, tla_atom, NoSet),
+							newNode = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, geq0, intNode, tla_atom, NoSet);
+					this.in_check(intNode);
+					node = newNode;
+				}
+				else {
+					this.in_check(node);
+				}						
 				Z3Node tmp1 = this.getNextStates(acts);
 				if (tmp1 != null) {
 					Z3Node tmp2 = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, node, tmp1, tla_atom, NoSet);
@@ -1739,8 +1775,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					// I guess I need to translate this node if MethodValue is Int, 
 					// or Boolean.					
 					node.name = ((MethodValue) val).md.getName();						
-					if (node.name.equals("Nat") || node.name.equals("Int")) {
-						node = this.encoder.setIntSort;							
+					if (node.name.equals("Int")) {							
+						node = this.encoder.setIntSort;
+					}
+					else if (node.name.equals("Nat")) {
+						node = this.encoder.setIntSort.clone();
+						node.name = "Nat";
 					}
 					else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {
 						node = this.encoder.setBoolSort;							
@@ -1850,8 +1890,12 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 				// Maybe it is unnecessary or only evalAppl needs it.
 				if (node.name.equals(NoName)) {					
 					node.name = init.getOperator().getName().toString();
-					if (node.name.equals("Nat") || node.name.equals("Int")) {
+					if (node.name.equals("Int")) {							
 						node = this.encoder.setIntSort;
+					}
+					else if (node.name.equals("Nat")) {
+						node = this.encoder.setIntSort.clone();
+						node.name = "Nat";
 					}						
 					else if (node.name.equals("BOOLEAN") || node.name.equals("Bool")) {
 						node = this.encoder.setBoolSort;
@@ -2101,8 +2145,18 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 			Z3Node lhs = this.eval(args[0], c),
 					rhs = this.eval(args[1], c);
 			node.addOperand(lhs);
-			node.addOperand(rhs);
-			this.in_check(node);			
+			node.addOperand(rhs);				
+			if (rhs.name.equals("Nat")) {
+				Z3Node zero = new Z3Node("0", OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet),						
+						geq0 = new Z3Node(">=", OPCODE_ge, this.encoder.boolSort, null, lhs, zero, tla_atom, NoSet),
+						intNode = new Z3Node(NoName, OPCODE_in, this.encoder.boolSort, null, lhs, this.encoder.setIntSort, tla_atom, NoSet),
+						newNode = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, geq0, intNode, tla_atom, NoSet);
+				this.in_check(intNode);
+				node = newNode;
+			}
+			else {
+				this.in_check(node);
+			}
 			Z3Node tmp1 = this.getInitStates(acts);
 			if (tmp1 != null) {
 				Z3Node tmp2 = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, node, tmp1, tla_atom, NoSet);
