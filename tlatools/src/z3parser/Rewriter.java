@@ -1304,7 +1304,7 @@ public class Rewriter implements ValueConstants, ToolGlobals, Z3Constants, Z3Err
 		inT = this.rewrite(inT);
 		e3.addBoundedVar(x);
 		//			if (this.z3Encoder.isSort(S)) {
-		e3.addDomain(S);
+		e3.addDomain(S.clone());
 		e3.addExpr(inT);
 		e3 = this.rewrite(e3);
 		//			}
@@ -1454,7 +1454,7 @@ public class Rewriter implements ValueConstants, ToolGlobals, Z3Constants, Z3Err
 		dom = this.rewrite(dom);
 		S = this.z3Encoder.getDef(S);
 		this.constraintChecker.unifySort_equivSort(dom, S);
-		Z3Node eqS = this.z3Tool.createZ3EqNode(dom, S),
+		Z3Node eqS = this.z3Tool.createZ3EqNode(dom, S.clone()),
 				//					fa = new Z3Node(S.getElemSort().name + "_apply_" + e.getSort().name, OPCODE_alpha, e.getSort(), null, f, x, e.getSort().kind, e.getSort().setLevel);
 				fa = new Z3Node(S.getElemSort().name + "_apply_" + e.getSort().name, OPCODE_alpha, e.getSort(), null, f, x,  e.getSort().kind,  e.getSort().setLevel);
 		fa.setSort(e.getSort());

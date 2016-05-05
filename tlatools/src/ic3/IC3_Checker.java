@@ -647,15 +647,18 @@ public class IC3_Checker implements Z3Constants, Z3ErrorCode, IC3_ErrorCode {
 		if (left < 1) {
 			left = 1;
 		}
-		for (int mid = left; mid <= right; mid++) {
+//		for (int mid = left; mid <= right; mid++) {
+		for (int mid = left; mid < right; mid++) {
 			this.next_solver.push();
 			this.next_solver.add(this.frames.get(mid).formula);
 			Status status = this.next_solver.check();
 			if (status == Status.SATISFIABLE) {
+				this.next_solver.pop();
 				res = mid;
 				break;
 			}
 			if (status == Status.UNKNOWN) {
+				this.next_solver.pop();
 				Assert.fail(Z3Err, "Z3 cannot solve Fi /\\ T /\\ ~q /\\ q");
 			}
 			this.next_solver.pop();
@@ -728,8 +731,12 @@ public class IC3_Checker implements Z3Constants, Z3ErrorCode, IC3_ErrorCode {
 		BoolExpr[] unshifted_core = new BoolExpr[alen];		
 		for (int i = 0; i < core.length; i++) {
 			String str = core[i].toString();
+			int predLen = str.length();
 			for (int j = dis; j < this.preds.length; j++) {
-				if (str.indexOf(this.preds[j].toString()) >= 0) {
+				String predName = this.preds[j].toString();
+				int index = str.indexOf(predName);					
+				if ((index == 0 && index + predName.length() == predLen) ||
+						(index == 5 && index + predName.length() + 1 == predLen)) {
 					if (str.indexOf("(not") >= 0) {
 						unshifted_core[i] = this.negPreds[j - dis];
 					}
@@ -810,7 +817,7 @@ public class IC3_Checker implements Z3Constants, Z3ErrorCode, IC3_ErrorCode {
 			IC3_StateK curBadState = new IC3_StateK(badPreds, shifted_badPreds, this.k_ic3 - 1);
 			BoolExpr[] nextBadPreds = this.getPrimedPreds(model);
 			BoolExpr[] unshifted_nextBadPreds = this.unshiftPrimedPreds(model);
-			IC3_StateK nextBadState = new IC3_StateK(nextBadPreds, unshifted_nextBadPreds, this.k_ic3);
+			IC3_StateK nextBadState = new IC3_StateK(unshifted_nextBadPreds, nextBadPreds, this.k_ic3);
 			curBadState.next = nextBadState;
 			this.next_solver.pop();
 			if (!this.removeCTI(curBadState, file)) {
