@@ -326,16 +326,28 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					// numbers between n1 and n2.
 					if (node.name.equals(OP_dotdot.toString()) || node.name.equals("DotDot")) {
 						this.dd_check(node);						
-						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
-						node.isDotDot = true;						
-						int n1 = Integer.parseInt(argVals[0].name);
-						int n2 = Integer.parseInt(argVals[1].name);
-						// Add the current argument to the node's list of arguments.
-						for (int i = n1; i <= n2; i++) {
-							String name = Integer.toString(i);
-							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
-							node.addOperand(node1);
-						}
+//						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
+//						node.isDotDot = true;						
+//						int n1 = Integer.parseInt(argVals[0].name);
+//						int n2 = Integer.parseInt(argVals[1].name);
+//						// Add the current argument to the node's list of arguments.
+//						for (int i = n1; i <= n2; i++) {
+//							String name = Integer.toString(i);
+//							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
+//							node.addOperand(node1);
+//						}
+//						node = new Z3Node(NoName, OPCODE_sso, this.encoder.setIntSort, null, tla_set, 1);
+						
+						Z3Node x = this.z3Tool.createBoundedVar(),
+								minCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, argVals[0], x, tla_atom, NoSet),
+								maxCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, x, argVals[1], tla_atom, NoSet),
+								p = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, minCon, maxCon, tla_atom, NoSet);
+								node = new Z3Node(NoName, OPCODE_sso, this.encoder.setIntSort, null, tla_set, 1);
+						x.setSort(this.encoder.intSort);
+						node.isDotDot = true;
+						node.addBoundedVar(x);
+						node.addDomain(this.encoder.setIntSort);
+						node.addExpr(p);								
 					}
 					else if (node.name.equals("-.")) {
 						String name = "-" + argVals[0].name;
@@ -1182,16 +1194,26 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					// numbers between n1 and n2.
 					if (node.name.equals(OP_dotdot.toString()) || node.name.equals("DotDot")) {
 						this.dd_check(node);						
-						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
-						node.isDotDot = true;								
-						int n1 = Integer.parseInt(argVals[0].name);
-						int n2 = Integer.parseInt(argVals[1].name);
-						// Add the current argument to the node's list of arguments.
-						for (int i = n1; i <= n2; i++) {
-							String name = Integer.toString(i);
-							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
-							node.addOperand(node1);
-						}
+//						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
+//						node.isDotDot = true;								
+//						int n1 = Integer.parseInt(argVals[0].name);
+//						int n2 = Integer.parseInt(argVals[1].name);
+//						// Add the current argument to the node's list of arguments.
+//						for (int i = n1; i <= n2; i++) {
+//							String name = Integer.toString(i);
+//							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
+//							node.addOperand(node1);
+//						}
+						Z3Node x = this.z3Tool.createBoundedVar(),
+								minCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, argVals[0], x, tla_atom, NoSet),
+								maxCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, x, argVals[1], tla_atom, NoSet),
+								p = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, minCon, maxCon, tla_atom, NoSet);
+								node = new Z3Node(NoName, OPCODE_sso, this.encoder.setIntSort, null, tla_set, 1);
+						x.setSort(this.encoder.intSort);
+						node.isDotDot = true;
+						node.addBoundedVar(x);
+						node.addDomain(this.encoder.setIntSort);
+						node.addExpr(p);	
 					}
 					else if (node.name.equals("-.")) {
 						String name = "-" + argVals[0].name;
@@ -1808,16 +1830,26 @@ public class TypeReconstructor implements ValueConstants, ToolGlobals, Z3Constan
 					// numbers between n1 and n2.
 					if (node.name.equals(OP_dotdot.toString()) || node.name.equals("DotDot")) {
 						this.dd_check(node);						
-						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
-						node.isDotDot = true;						
-						int n1 = Integer.parseInt(argVals[0].name);
-						int n2 = Integer.parseInt(argVals[1].name);
-						// Add the current argument to the node's list of arguments.
-						for (int i = n1; i <= n2; i++) {
-							String name = Integer.toString(i);
-							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
-							node.addOperand(node1);
-						}
+//						node = new Z3Node(NoName, OPCODE_se, this.encoder.setIntSort, null, tla_set, 1);
+//						node.isDotDot = true;						
+//						int n1 = Integer.parseInt(argVals[0].name);
+//						int n2 = Integer.parseInt(argVals[1].name);
+//						// Add the current argument to the node's list of arguments.
+//						for (int i = n1; i <= n2; i++) {
+//							String name = Integer.toString(i);
+//							Z3Node node1 = new Z3Node(name, OPCODE_const, this.encoder.intSort, null, tla_atom, NoSet);
+//							node.addOperand(node1);
+//						}
+						Z3Node x = this.z3Tool.createBoundedVar(),
+								minCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, argVals[0], x, tla_atom, NoSet),
+								maxCon = new Z3Node("<=", OPCODE_le, this.encoder.boolSort, null, x, argVals[1], tla_atom, NoSet),
+								p = new Z3Node("and", OPCODE_land, this.encoder.boolSort, null, minCon, maxCon, tla_atom, NoSet);
+								node = new Z3Node(NoName, OPCODE_sso, this.encoder.setIntSort, null, tla_set, 1);
+						x.setSort(this.encoder.intSort);
+						node.isDotDot = true;
+						node.addBoundedVar(x);
+						node.addDomain(this.encoder.setIntSort);
+						node.addExpr(p);	
 					}
 					else if (node.name.equals("-.")) {
 						String name = "-" + argVals[0].name;
